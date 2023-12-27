@@ -1,0 +1,29 @@
+#Backend Secret details
+NODE_ENV= development
+MONGODB_URL = mongodb://localhost:27017/bold_portable
+SECRET_KEY="abcdefghijklmnopqrstuvwxyz1234567890"
+PORT = 4000
+EXPIRES_IN = "1d"
+FILE_SIZE = 2097152 
+APP_URL=http://localhost:3000
+
+#Stripe Secret Keys
+STRIPE_PUBLIC_KEY= INSERT YOUR KEY HERE
+STRIPE_SECRET_KEY= INSERT YOUR KEY HERE
+STRIPE_WEBHOOK_SECRET_KEY= INSERT YOUR KEY HERE
+SUCCESS_URL=http://localhost:3000/payment-success
+CANCEL_URL=http://localhost:3000/payment-cancel
+
+#Sendgrid Details
+MAIL_FROM = info@go-bold.ca
+MAIL_MAILER=smtp
+MAIL_HOST =smtp.sendgrid.net
+MAIL_USERNAME=apikey
+MAIL_PASSWORD= INSERT YOUR KEY HERE
+MAIL_ENCRYPTION=tls
+MAIL_PORT=587
+
+#Twilio Key
+TWILLIO_SID= INSERT YOUR KEY HERE
+TWILLIO_TOKEN= INSERT YOUR KEY HERE
+TWILLIO_PHONE= INSERT YOUR KEY HERE
