@@ -1662,13 +1662,25 @@ exports.getAllQuotation = async (req, res) => {
 
             // Filtering quotations with pending and cancelled status only
             const filteredQuotations = quotations.filter(quotation => quotation.status === 'pending' || quotation.status === 'cancelled');
-            const count = filteredQuotations.length;
+            // const count = filteredQuotations.length;
+            const count = quotations.length
+            
+            // return apiResponse.successResponseWithData(
+            //     res,
+            //     "Quotations retrieved successfully",
+            //     {
+            //         quotations: filteredQuotations.slice((page - 1) * limit, page * limit),
+            //         page: page,
+            //         pages: Math.ceil(count / limit),
+            //         total: count
+            //     }
+            // );
 
             return apiResponse.successResponseWithData(
                 res,
                 "Quotations retrieved successfully",
                 {
-                    quotations: filteredQuotations.slice((page - 1) * limit, page * limit),
+                    quotations: quotations.slice((page - 1) * limit, page * limit),
                     page: page,
                     pages: Math.ceil(count / limit),
                     total: count
