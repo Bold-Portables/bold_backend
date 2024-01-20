@@ -21,6 +21,8 @@ exports.endSubscription = async (object) => {
             _id: subscription,
         });
 
+        if (!subscriptionData) return
+
         if (type === "SUBSCRIPTION_END" && status === "complete") {
             const deleted = await stripe.subscriptions.del(
                 subscriptionData.subscription
