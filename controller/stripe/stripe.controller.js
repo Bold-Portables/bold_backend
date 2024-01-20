@@ -356,9 +356,14 @@ exports.getSubscriptionListForAdmin = async (req, res) => {
 
         for (const subscription of formattedSubscriptions) {
             const searchString= "quotationId="+subscription.quotationId+"&quotationType="+subscription.quotationType
-            console.log(searchString)
+            // console.log(searchString)
+            // const inventories = await Inventory.find({
+            //     qrCodeValue: { $regex: searchString, $options: "i" }
+            // });
+
             const inventories = await Inventory.find({
-                qrCodeValue: { $regex: searchString, $options: "i" }
+                quote_id: subscription.quotationId.toString(),
+                quote_type: subscription.quotationType
             });
 
             console.log("Number of inventories:", inventories.length);
