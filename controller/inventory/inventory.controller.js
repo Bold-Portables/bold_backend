@@ -547,11 +547,17 @@ exports.findByQutationTypeAndId = async (req, res) => {
 
         const skip = (page - 1) * limit;
 
-        const inventories = await Inventory.find({ qrCodeValue: { $regex: searchString, $options: "i" } })
-            .skip(skip)
-            .limit(limit);
+        const inventories = await Inventory.find({ 
+            quote_id: quotationId,
+            quote_type: quotationType
+        })
+        .skip(skip)
+        .limit(limit);
 
-        const totalItems = await Inventory.countDocuments({ qrCodeValue: { $regex: searchString, $options: "i" } });
+        const totalItems = await Inventory.countDocuments({ 
+            quote_id: quotationId,
+            quote_type: quotationType 
+        });
 
         const totalPages = Math.ceil(totalItems / limit);
 
