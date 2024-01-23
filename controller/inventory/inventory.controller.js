@@ -231,7 +231,7 @@ exports.getQrCodeDetails = async (req, res) => {
 
 exports.assignQrCodeToQuote = async (req, res) => {
     try {
-        const { _ids, quoteId, quoteType } = req.body;
+        const { _ids, quoteId, quoteType, coordinator } = req.body;
 
         // Find the inventories by IDs
         const inventories = await Inventory.find({ _id: { $in: _ids } });
@@ -252,6 +252,7 @@ exports.assignQrCodeToQuote = async (req, res) => {
             inventory.quote_id = quoteId;
             inventory.quote_type = quoteType;
             inventory.status = 'active';
+            inventory.coordinator = coordinator.name
 
             // Append the quoteType and quoteId to the existing qrCodeValue
             // const updatedQrCodeValue = `${process.env.APP_URL}/services?quotationId=${quoteId}&quotationType=${quoteType}&qrId=${inventory._id}`;

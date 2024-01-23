@@ -49,6 +49,11 @@ const inventorySchema = new mongoose.Schema(
             required: false,
             default: null
         },
+        coordinator: {
+            type: String,
+            required: false,
+            default: null
+        },
         created_value: {
             type: String,
             required: false,
