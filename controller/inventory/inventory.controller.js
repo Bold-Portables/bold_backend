@@ -589,6 +589,7 @@ exports.reinitializeQrCodeValue = async (req, res) => {
         inventory.status = "pending";
         inventory.quote_id = null;
         inventory.quote_type = null;
+        inventory.coordinator = null;
 
         await inventory.save();
 
