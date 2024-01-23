@@ -126,8 +126,9 @@ exports.getInventoryByQRCodeValue = async (req, res) => {
             return apiResponse.errorResponse(res, 'Id is missing in the query parameters');
         }
 
+        const link = `${process.env.APP_URL}/services/${id}`
         // Find the inventory based on the qrCodeValue
-        const inventory = await Inventory.findOne({ created_value: id });
+        const inventory = await Inventory.findOne({ qrCodeValue: link });
         // Check if the inventory with the given qrCodeValue exists
         if (!inventory) {
             return apiResponse.ErrorResponse(res, 'Inventory not found');
