@@ -36,8 +36,6 @@ exports.createConstructionQuotation = async (req, res) => {
             // Rest of the properties
         } = req.body;
 
-        const updatedCellNumber = '+91' + cellNumber;
-
         // // Check if a user with the provided email and cellNumber already exists
         // const existingUser = await Construction.findOne({
         //     $and: [
@@ -645,8 +643,6 @@ exports.createDisasterReliefQuotation = async (req, res) => {
             // Rest of the properties
         } = req.body;
 
-        const updatedCellNumber = '+91' + cellNumber;
-
         // Check if a user with the provided email and cellNumber already exists
         // const existingUser = await DisasterRelief.findOne({
         //     $and: [
@@ -889,7 +885,6 @@ exports.createPersonalOrBusinessQuotation = async (req, res) => {
             // Rest of the properties
         } = req.body;
 
-        const updatedCellNumber = '+91' + cellNumber;
 
         // Check if a user with the provided email and cellNumber already exists
         // const existingUser = await PersonalOrBusiness.findOne({
@@ -1128,7 +1123,6 @@ exports.createFarmOrchardWineryQuotation = async (req, res) => {
             // Rest of the properties
         } = req.body;
 
-        const updatedCellNumber = '+91' + cellNumber;
 
         // Check if a user with the provided email and cellNumber already exists
         // const existingUser = await FarmOrchardWinery.findOne({
@@ -1368,7 +1362,6 @@ exports.createEventQuotation = async (req, res) => {
             coordinator: { email, cellNumber },
             // Rest of the properties
         } = req.body;
-        const updatedCellNumber = '+91' + cellNumber;
 
         // Check if a user with the provided email and cellNumber already exists
         // const existingUser = await Event.findOne({
