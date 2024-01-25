@@ -24,7 +24,7 @@ exports.createCustomer = async (req, res) => {
         if (!!stripe_customer_id) {
             return apiResponse.successResponseWithData(
                 res,
-                "Stipe costomer already exist",
+                "Stripe customer already exist",
                 { customer: stripe_customer_id }
             );
         }
@@ -35,7 +35,7 @@ exports.createCustomer = async (req, res) => {
         await User.updateOne({ email }, { $set: { stripe_customer_id: id } });
         return apiResponse.successResponseWithData(
             res,
-            "Stipe costomer created successfully"
+            "Stripe customer created successfully"
         );
     } catch (error) {
         return apiResponse.ErrorResponse(res, error.message);
@@ -114,15 +114,15 @@ exports.createCheckoutSession = async (req, res) => {
 
         const { id, url } = session;
 
-        const mailOptions = {
-            from: process.env.MAIL_FROM,
-            to: email,
-            subject: 'Action Required: Payment Confirmation for Service Request',
-            text: `Hi ${user.name},\n\nThank you for your service request. We are pleased to inform you that we have received your request and are in the process of taking action. To proceed with the payment, please click on the following link to make a secure payment via Stripe:\n\n${url}\n\nAlternatively, you can copy and paste the following link in your browser:\n\n${url}\n\nIf you have any questions or need further assistance, please feel free to contact our customer support team.\n\nThank you`,
-            html: `<p>Hi ${user.name},</p><p>Thank you for your service request. We are pleased to inform you that we have received your request and are in the process of taking action.</p><p>To proceed with the payment, please click on the following link to make a secure payment via Stripe:</p><p><a href="${url}">Make Payment</a></p><p>Alternatively, you can copy and paste the following link in your browser:</p><p>${url}</p><p>If you have any questions or need further assistance, please feel free to contact our customer support team.</p><p>Thank you</p>`,
-        };
+        // const mailOptions = {
+        //     from: process.env.MAIL_FROM,
+        //     to: email,
+        //     subject: 'Action Required: Payment Confirmation for Service Request',
+        //     text: `Hi ${user.name},\n\nThank you for your service request. We are pleased to inform you that we have received your request and are in the process of taking action. To proceed with the payment, please click on the following link to make a secure payment via Stripe:\n\n${url}\n\nAlternatively, you can copy and paste the following link in your browser:\n\n${url}\n\nIf you have any questions or need further assistance, please feel free to contact our customer support team.\n\nThank you`,
+        //     html: `<p>Hi ${user.name},</p><p>Thank you for your service request. We are pleased to inform you that we have received your request and are in the process of taking action.</p><p>To proceed with the payment, please click on the following link to make a secure payment via Stripe:</p><p><a href="${url}">Make Payment</a></p><p>Alternatively, you can copy and paste the following link in your browser:</p><p>${url}</p><p>If you have any questions or need further assistance, please feel free to contact our customer support team.</p><p>Thank you</p>`,
+        // };
         
-        mailer.sendMail(mailOptions);
+        // mailer.sendMail(mailOptions);
 
         return apiResponse.successResponseWithData(
             res,
@@ -261,7 +261,7 @@ exports.endSubscription = async (req, res) => {
         const user = await User.findOne({ email });
         const { stripe_customer_id } = user;
         if (!stripe_customer_id) {
-            return apiResponse.ErrorResponse(res, "Stipe costomer not exist");
+            return apiResponse.ErrorResponse(res, "Stripe customer does not exist");
         }
 
         const encodedQuotationId = encodeURIComponent(subscription.quotationId);
@@ -292,22 +292,22 @@ exports.endSubscription = async (req, res) => {
         });
         const { id, url, customer } = session;
 
-        const mailOptions = {
-            from: process.env.MAIL_FROM,
-            to: email,
-            subject: 'QR Code for your Portable Rental',
-            text: `Hi ${user.name},\n\nWe have received your request to end your subscription with us. Please note that there will be a transportation charge associated with the subscription cancellation.The transportation charge is applicable due to the logistics involved in collecting the rented items from your location.\nTo proceed with the payment, please click on the following link to make a secure payment via Stripe:${url}"\nAlternatively, you can copy and paste the following link in your browser:${url}\n\n\Thank you`,
-            html: `<p>Hi ${user.name},</p>
-            <p>We have received your request to end your subscription with us. Please note that there will be a transportation charge associated with the subscription cancellation. The transportation charge is applicable due to the logistics involved in collecting the rented items from your location.</p>
-            <p>To proceed with the payment, please click on the following link to make a secure payment via Stripe:</p>
-            <p><a href="${url}">Make Payment</a></p>
-            <p>Alternatively, you can copy and paste the following link in your browser:</p>
-            <p>${url}</p>
-            <p>Thank you</p>
-            `,
-        };
+        // const mailOptions = {
+        //     from: process.env.MAIL_FROM,
+        //     to: email,
+        //     subject: 'QR Code for your Portable Rental',
+        //     text: `Hi ${user.name},\n\nWe have received your request to end your subscription with us. Please note that there will be a transportation charge associated with the subscription cancellation.The transportation charge is applicable due to the logistics involved in collecting the rented items from your location.\nTo proceed with the payment, please click on the following link to make a secure payment via Stripe:${url}"\nAlternatively, you can copy and paste the following link in your browser:${url}\n\n\Thank you`,
+        //     html: `<p>Hi ${user.name},</p>
+        //     <p>We have received your request to end your subscription with us. Please note that there will be a transportation charge associated with the subscription cancellation. The transportation charge is applicable due to the logistics involved in collecting the rented items from your location.</p>
+        //     <p>To proceed with the payment, please click on the following link to make a secure payment via Stripe:</p>
+        //     <p><a href="${url}">Make Payment</a></p>
+        //     <p>Alternatively, you can copy and paste the following link in your browser:</p>
+        //     <p>${url}</p>
+        //     <p>Thank you</p>
+        //     `,
+        // };
         
-        mailer.sendMail(mailOptions);
+        // mailer.sendMail(mailOptions);
 
         return apiResponse.successResponseWithData(
             res,
