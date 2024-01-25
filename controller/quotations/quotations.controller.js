@@ -28,6 +28,17 @@ const isValidDate = (dateString) => {
     return inputDate.isValid() && inputDate.isSameOrAfter(currentDate, 'day');
 };
 
+const monthlyCostSum = (costDetails) => {
+    const monthlySum = Object.keys(costDetails).reduce((acc, key) => {
+                            if (key !== 'pickUpPrice') {
+                              return acc + costDetails[key];
+                            }
+                            return acc;
+                          }, 0);
+                          
+    return monthlySum
+}
+
 exports.createConstructionQuotation = async (req, res) => {
     try {
 
@@ -1847,8 +1858,7 @@ exports.getSpefcificQuotationQuoteId = async (req, res) => {
                     }
 
                     if (costDetails) {
-                        const costDetailsSum = Object.values(costDetails).reduce((acc, val) => acc + val, 0);
-                        quotations[0].costDetailsSum = costDetailsSum;
+                        quotations[0].costDetailsSum = monthlyCostSum(costDetails);
                     }
                     const inventories = await Inventory.find({ quote_id: event._id }).select('qrId');
                     quotations[0].inventories = inventories;
@@ -1869,8 +1879,7 @@ exports.getSpefcificQuotationQuoteId = async (req, res) => {
                     }
 
                     if (costDetails) {
-                        const costDetailsSum = Object.values(costDetails).reduce((acc, val) => acc + val, 0);
-                        quotations[0].costDetailsSum = costDetailsSum;
+                        quotations[0].costDetailsSum = monthlyCostSum(costDetails);
                     }
                     const inventories = await Inventory.find({ quote_id: farmOrchardWinery._id }).select('qrId');
                     quotations[0].inventories = inventories;
@@ -1891,8 +1900,7 @@ exports.getSpefcificQuotationQuoteId = async (req, res) => {
                     }
 
                     if (costDetails) {
-                        const costDetailsSum = Object.values(costDetails).reduce((acc, val) => acc + val, 0);
-                        quotations[0].costDetailsSum = costDetailsSum;
+                        quotations[0].costDetailsSum = monthlyCostSum(costDetails);
                     }
                     const inventories = await Inventory.find({ quote_id: personalOrBusiness._id }).select('qrId');
                     quotations[0].inventories = inventories;
@@ -1913,8 +1921,7 @@ exports.getSpefcificQuotationQuoteId = async (req, res) => {
                     }
 
                     if (costDetails) {
-                        const costDetailsSum = Object.values(costDetails).reduce((acc, val) => acc + val, 0);
-                        quotations[0].costDetailsSum = costDetailsSum;
+                        quotations[0].costDetailsSum = monthlyCostSum(costDetails);
                     }
                     const inventories = await Inventory.find({ quote_id: disasterRelief._id }).select('qrId');
                     quotations[0].inventories = inventories;
@@ -1934,8 +1941,7 @@ exports.getSpefcificQuotationQuoteId = async (req, res) => {
                         quotations[0].subscriptionStatus = subscription.status;
                     }
                     if (costDetails) {
-                        const costDetailsSum = Object.values(costDetails).reduce((acc, val) => acc + val, 0);
-                        quotations[0].costDetailsSum = costDetailsSum;
+                        quotations[0].costDetailsSum = monthlyCostSum(costDetails);
                     }
                     const inventories = await Inventory.find({ quote_id: construction._id }).select('qrId');
                     quotations[0].inventories = inventories;
@@ -1955,8 +1961,7 @@ exports.getSpefcificQuotationQuoteId = async (req, res) => {
                         quotations[0].subscriptionStatus = subscription.status;
                     }
                     if (costDetails) {
-                        const costDetailsSum = Object.values(costDetails).reduce((acc, val) => acc + val, 0);
-                        quotations[0].costDetailsSum = costDetailsSum;
+                        quotations[0].costDetailsSum = monthlyCostSum(costDetails);
                     }
 
                     const inventories = await Inventory.find({ quote_id: recreationalSite._id }).select('qrId');
