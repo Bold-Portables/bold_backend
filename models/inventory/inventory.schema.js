@@ -50,8 +50,8 @@ const inventorySchema = new mongoose.Schema(
             default: null
         },
         coordinator: {
-            type: String,
-            required: false,
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
             default: null
         },
         created_value: {

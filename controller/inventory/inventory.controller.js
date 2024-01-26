@@ -253,7 +253,7 @@ exports.assignQrCodeToQuote = async (req, res) => {
             inventory.quote_id = quoteId;
             inventory.quote_type = quoteType;
             inventory.status = 'active';
-            inventory.coordinator = coordinator.name
+            inventory.coordinator = coordinator
 
             // Append the quoteType and quoteId to the existing qrCodeValue
             // const updatedQrCodeValue = `${process.env.APP_URL}/services?quotationId=${quoteId}&quotationType=${quoteType}&qrId=${inventory._id}`;
@@ -284,6 +284,7 @@ exports.getQrCodesByStatus = async ({ query }, res) => {
 
         // Fetch the data without aggregation, using find(), skip(), and limit()
         const qrCodes = await Inventory.find(findQuery)
+            .populate({ path: "coordinator", model: "User", select: "name" })
             .sort({ updatedAt: -1 })
             .skip(skip)
             .limit(limitNumber)
