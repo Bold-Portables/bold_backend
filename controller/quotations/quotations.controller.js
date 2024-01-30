@@ -519,7 +519,6 @@ const addQuotationDetails = (pdfDoc, quotationData) => {
 
     if (quotationData.quotationType == "event") {
         costDetailsData.push(
-            ['Pick Up Price:', `$${quotationData.costDetails.pickUpPrice}`],
             ['Pay Per Use:', `$${quotationData.costDetails.payPerUse}`],
             ['Fenced Off:', `$${quotationData.costDetails.fencedOff}`],
             ['Actively Cleaned:', `$${quotationData.costDetails.activelyCleaned}`],
@@ -558,12 +557,20 @@ const addQuotationDetails = (pdfDoc, quotationData) => {
 
     // Calculate the total cost
     const totalCost = quotationData.costDetails.useAtNightCost + quotationData.costDetails.useInWinterCost + quotationData.costDetails.numberOfUnitsCost + quotationData.costDetails.deliveryPrice + quotationData.costDetails.workersCost + quotationData.costDetails.handWashingCost + quotationData.costDetails.handSanitizerPumpCost + quotationData.costDetails.specialRequirementsCost + quotationData.costDetails.serviceFrequencyCost + quotationData.costDetails.weeklyHoursCost + quotationData.serviceCharge + quotationData.deliveredPrice;
+    const initialInvoice = totalCost + quotationData.costDetails.pickUpPrice
 
     pdfDoc.moveDown();
     pdfDoc.moveDown();
 
-    // Draw the Total row
-    drawTableRow(['Total:', `$${totalCost}`], 0, yOffset);
+    const totalsData = [
+        ['Delivery Price:', `$${quotationData.costDetails.pickUpPrice}`],
+        ['Monthly Invoice:', `$${totalCost}`],
+        ['Initial Invoice:', `$${initialInvoice}`],
+    ];
+    // Draw the Total rows
+    for (let i = 0; i < totalsData.length; i++) {
+        drawTableRow(totalsData[i], i, yOffset);
+    }
 
     // Add more content to the PDF as needed
 
