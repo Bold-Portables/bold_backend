@@ -35,6 +35,8 @@ exports.paymentSucceeded = async (object) => {
         );
 
         const { customer_email, subscription, status } = object;
+        const deliveryCost = object.lines.data[0].amount / 100;
+        const monthlyCost = object.lines.data[1].amount / 100;
 
         const user = await User.findOne({ email: customer_email });
 
@@ -51,6 +53,9 @@ exports.paymentSucceeded = async (object) => {
                 subscription,
                 quotationId: product.metadata.quotationId,
                 quotationType: product.metadata.quotationType,
+                monthlyCost: monthlyCost,
+                upgradedCost: monthlyCost,
+                deliveryCost: deliveryCost,
                 status: "ACTIVE",
                 qrCode: dataURL
             }).save();
