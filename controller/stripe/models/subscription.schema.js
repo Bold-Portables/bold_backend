@@ -24,6 +24,18 @@ const subscriptionsSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        monthlyCost: {
+            type: Number,
+            default: 0
+        },
+        upgradedCost: {
+            type: Number,
+            default: 0
+        },
+        deliveryCost: {
+            type: Number,
+            default: 0
+        },
         status: {
             type: String,
             enum: ['ACTIVE', 'INACTIVE'],
