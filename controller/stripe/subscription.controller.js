@@ -66,22 +66,36 @@ exports.getDetails = async (req, res) => {
 };
 
 exports.updateSubscription = async (req, res) => {
-    console.log('updateSubscription called')
-
     try {
         const { subscriptionId } = req.params;
+        const { upgradeAmount } = req.body;
 
-        console.log(req.body)
-        console.log(subscriptionId)
+        const subscription = await Subscription.findById(subscriptionId);
 
-        if (!subscriptionId) {
+        if (!subscription) {
             return apiResponse.notFoundResponse(res, "Subscription not found");
         }
+
+        const stripeSubscription = await stripe.subscriptions.retrieve(subscription.subscription);
+        const nextInvoice = await stripe.invoices.retrieveUpcoming({ customer: stripeSubscription.customer });
+
+        await stripe.invoiceItems.create({
+            customer: stripeSubscription.customer,
+            price_data: {
+                currency: "cad",
+                product: process.env.STRIPE_PRODUCT_SERVICE,
+                unit_amount: parseInt(upgradeAmount) * 100,
+            },
+            description: "Service Fee - Custom description here...", 
+            quantity: 1,
+            invoice: nextInvoice.id,
+        });
 
         return apiResponse.successResponseWithData(res, "Subscription updated successfully", {
             subscriptionId,
         });
     } catch (error) {
+        console.log(error.message)
         return apiResponse.ErrorResponse(res, error.message);
     }
 };
