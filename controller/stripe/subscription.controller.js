@@ -64,3 +64,25 @@ exports.getDetails = async (req, res) => {
         return apiResponse.ErrorResponse(res, error.message);
     }
 };
+
+exports.updateSubscription = async (req, res) => {
+    console.log('updateSubscription called')
+
+    try {
+        const { subscriptionId } = req.params;
+
+        console.log(req.body)
+        console.log(subscriptionId)
+
+        if (!subscriptionId) {
+            return apiResponse.notFoundResponse(res, "Subscription not found");
+        }
+
+        return apiResponse.successResponseWithData(res, "Subscription updated successfully", {
+            subscriptionId,
+        });
+    } catch (error) {
+        return apiResponse.ErrorResponse(res, error.message);
+    }
+};
+ 

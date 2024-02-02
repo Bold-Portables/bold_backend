@@ -55,4 +55,11 @@ router.get(
     subscriptionConteoller.getDetails
 );
 
+router.post(
+    "/admin/subscription/:subscriptionId",
+    checkAuth,
+    hasRole("ADMIN"),
+    subscriptionConteoller.updateSubscription
+);
+
 module.exports = router;
