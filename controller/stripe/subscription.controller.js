@@ -91,11 +91,13 @@ exports.updateSubscription = async (req, res) => {
             invoice: nextInvoice.id,
         });
 
+        subscription.upgradedCost = subscription.upgradedCost + parseInt(upgradeAmount)
+        subscription.save()
+
         return apiResponse.successResponseWithData(res, "Subscription updated successfully", {
             subscriptionId,
         });
     } catch (error) {
-        console.log(error.message)
         return apiResponse.ErrorResponse(res, error.message);
     }
 };
