@@ -68,7 +68,7 @@ exports.getDetails = async (req, res) => {
 exports.updateSubscription = async (req, res) => {
     try {
         const { subscriptionId } = req.params;
-        const { upgradeAmount } = req.body;
+        const { upgradeAmount, description } = req.body;
 
         const subscription = await Subscription.findById(subscriptionId);
 
@@ -86,7 +86,7 @@ exports.updateSubscription = async (req, res) => {
                 product: process.env.STRIPE_PRODUCT_SERVICE,
                 unit_amount: parseInt(upgradeAmount) * 100,
             },
-            description: "Service Fee - Custom description here...", 
+            description: `Service Fee - ${description}`, 
             quantity: 1,
             invoice: nextInvoice.id,
         });
