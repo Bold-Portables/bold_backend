@@ -64,3 +64,41 @@ exports.getDetails = async (req, res) => {
         return apiResponse.ErrorResponse(res, error.message);
     }
 };
+
+exports.updateSubscription = async (req, res) => {
+    try {
+        const { subscriptionId } = req.params;
+        const { upgradeAmount, description } = req.body;
+
+        const subscription = await Subscription.findById(subscriptionId);
+
+        if (!subscription) {
+            return apiResponse.notFoundResponse(res, "Subscription not found");
+        }
+
+        const stripeSubscription = await stripe.subscriptions.retrieve(subscription.subscription);
+        const nextInvoice = await stripe.invoices.retrieveUpcoming({ customer: stripeSubscription.customer });
+
+        await stripe.invoiceItems.create({
+            customer: stripeSubscription.customer,
+            price_data: {
+                currency: "cad",
+                product: process.env.STRIPE_PRODUCT_SERVICE,
+                unit_amount: parseInt(upgradeAmount) * 100,
+            },
+            description: `Service Fee - ${description}`, 
+            quantity: 1,
+            invoice: nextInvoice.id,
+        });
+
+        subscription.upgradedCost = subscription.upgradedCost + parseInt(upgradeAmount)
+        subscription.save()
+
+        return apiResponse.successResponseWithData(res, "Subscription updated successfully", {
+            subscriptionId,
+        });
+    } catch (error) {
+        return apiResponse.ErrorResponse(res, error.message);
+    }
+};
+ 
