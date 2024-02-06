@@ -1,4 +1,5 @@
 const Inventory = require('../../models/inventory/inventory.schema');
+const UserService = require('../../models/userServices/userServices.schema');
 const apiResponse = require("../../helpers/apiResponse");
 const mailer = require("../../helpers/nodemailer");
 const qrcode = require('qrcode');
@@ -282,12 +283,60 @@ exports.getQrCodesByStatus = async ({ query }, res) => {
 
         const findQuery = status ? { status } : {};
 
-        // Fetch the data without aggregation, using find(), skip(), and limit()
-        const qrCodes = await Inventory.find(findQuery)
-            .populate({ path: "coordinator", model: "User", select: "name" })
-            .sort({ updatedAt: -1 })
-            .skip(skip)
-            .limit(limitNumber)
+        const qrCodes = await Inventory.aggregate([
+            { $match: findQuery },
+            {
+                $lookup: {
+                    from: 'userservices',
+                    let: { inventoryId: { $toString: '$_id' } },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$qrId', '$$inventoryId'] } } },
+                    ],
+                    as: 'serviceRequests'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'coordinator',
+                    foreignField: '_id',
+                    as: 'populatedUser'
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    coordinator: 1,
+                    productName: 1,
+                    description: 1,
+                    category: 1,
+                    gender: 1,
+                    quantity: 1,
+                    qrId: 1,
+                    qrCodeValue: 1,
+                    type: 1,
+                    qrCode: 1,
+                    quote_id: 1,
+                    quote_type: 1,
+                    created_value: 1,
+                    initial_value: 1,
+                    status: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    serviceRequestCount: {
+                        $cond: {
+                            if: { $isArray: "$serviceRequests" },
+                            then: { $size: "$serviceRequests" },
+                            else: 0
+                        }
+                    },
+                    coordinator: { $arrayElemAt: ["$populatedUser.name", 0] }
+                }
+            },
+            { $sort: { updatedAt: -1 } },
+            { $skip: skip },
+            { $limit: limitNumber }
+        ])
 
         const totalCount = await Inventory.countDocuments(findQuery);
 
