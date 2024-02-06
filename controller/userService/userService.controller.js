@@ -196,3 +196,37 @@ exports.serviceDetail = async (req, res) => {
 	}
 };
 
+exports.getServiceByInventoryId = async (req, res) => {
+    try {
+         // Extract the page and limit values from the request query parameters
+         const { inventory_id } = req.params;
+         const page = parseInt(req.query.page) || 1;
+         const limit = parseInt(req.query.limit) || 10;
+ 
+         // Calculate the skip value based on the page and limit
+         const skip = (page - 1) * limit;
+ 
+         // Retrieve the total count of services
+         const totalCount = await UserService.countDocuments({qrId: inventory_id});
+ 
+         // Retrieve services based on the pagination parameters
+         const userServices = await UserService.find({qrId: inventory_id})
+             .skip(skip)
+             .limit(limit);
+ 
+         return apiResponse.successResponseWithData(
+             res,
+             'Services retrieved successfully',
+             {
+                 userServices,
+                 totalCount,
+                 currentPage: page,
+                 totalPages: Math.ceil(totalCount / limit)
+             }
+         );
+    } catch (error) {
+        return apiResponse.ErrorResponse(res, error.message);
+    }
+};
+
+
