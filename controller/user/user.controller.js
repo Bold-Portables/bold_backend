@@ -57,7 +57,7 @@ exports.updateProfileImage = async (req, res) => {
         }
 
         // Update user's profile picture
-        user.profile_picture = req.file.path;
+        user.profile_picture = req.file.key;
         const updatedUser = await user.save();
 
         if (updatedUser) {

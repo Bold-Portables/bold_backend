@@ -211,17 +211,22 @@ exports.getServiceByInventoryId = async (req, res) => {
  
          // Retrieve services based on the pagination parameters
          const userServices = await UserService.find({qrId: inventory_id})
+		 	 .sort({ createdAt: -1 })
              .skip(skip)
              .limit(limit);
+
+		const pagination = {
+			currentPage: page,
+			totalPages: Math.ceil(totalCount / limit),
+			totalDocuments: totalCount
+		};
  
          return apiResponse.successResponseWithData(
              res,
              'Services retrieved successfully',
              {
                  userServices,
-                 totalCount,
-                 currentPage: page,
-                 totalPages: Math.ceil(totalCount / limit)
+                 pagination
              }
          );
     } catch (error) {
