@@ -21,13 +21,13 @@ exports.save = async (req, res) => {
 		if (req.files) {
 			// multiple files uploaded
 			images = req.files.map(file => ({
-				image_path: file.path,
+				image_path: file.key,
 				image_type: file.mimetype
 			}));
 		} else {
 			// single file uploaded
 			images.push({
-				image_path: req.file.path,
+				image_path: req.file.key,
 				image_type: req.file.mimetype
 			});
 		}
@@ -211,17 +211,22 @@ exports.getServiceByInventoryId = async (req, res) => {
  
          // Retrieve services based on the pagination parameters
          const userServices = await UserService.find({qrId: inventory_id})
+		 	 .sort({ createdAt: -1 })
              .skip(skip)
              .limit(limit);
+
+		const pagination = {
+			currentPage: page,
+			totalPages: Math.ceil(totalCount / limit),
+			totalDocuments: totalCount
+		};
  
          return apiResponse.successResponseWithData(
              res,
              'Services retrieved successfully',
              {
                  userServices,
-                 totalCount,
-                 currentPage: page,
-                 totalPages: Math.ceil(totalCount / limit)
+                 pagination
              }
          );
     } catch (error) {
