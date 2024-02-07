@@ -21,13 +21,13 @@ exports.save = async (req, res) => {
 		if (req.files) {
 			// multiple files uploaded
 			images = req.files.map(file => ({
-				image_path: file.path,
+				image_path: file.key,
 				image_type: file.mimetype
 			}));
 		} else {
 			// single file uploaded
 			images.push({
-				image_path: req.file.path,
+				image_path: req.file.key,
 				image_type: req.file.mimetype
 			});
 		}

@@ -1,35 +1,46 @@
 const multer = require("multer");
+const multerS3 = require("multer-s3");
+const aws = require("./aws");
 
+const s3 = new aws.S3();
 
-const multerStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        if (file.fieldname === "profile_picture") {
-            cb(null, "public/profile");
-        } else if (file.fieldname === "product_image") {
-            cb(null, "public/products");
-        } else if (file.fieldname === "service_image") {
-            cb(null, "public/services");
-        } else {
-            cb(new Error("Invalid field name"), false);
-        }
-    },
-    filename: (req, file, cb) => {
-        const ext = file.mimetype.split("/")[1];
-        cb(null, `${file.fieldname}-${Date.now()}.${ext}`);
-    },
-});
+const multerStorageS3 = multerS3({
+  s3: s3,
+  bucket: "boldaws",
+  metadata: function (req, file, cb) {
+    cb(null, { fieldName: file.fieldname });
+  },
+  key: function (req, file, cb) {
+    let directory
 
-const multerFilter = (req, file, cb) => {
-    if (file.mimetype.split("/")[0] === "image") {
-        cb(null, true);
+    if (file.fieldname === "profile_picture"){
+      directory = "images/profile";
+
+    } else if (file.fieldname === "product_image"){
+      directory = "images/products"
+
     } else {
-        cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE"), false);
+      directory = "images/services"
     }
-};
+
+    const ext = file.mimetype.split("/")[1];
+    const filename = `${file.fieldname}-${Date.now()}.${ext}`;
+    const key = `${directory}/${filename}`;
+    cb(null, key);
+  }
+})
+
+const filter = (req, file, cb) => {
+  if (file.mimetype.split("/")[0] === "image") {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type"), false);
+  }
+}
 
 const upload = multer({
-    storage: multerStorage,
-    fileFilter: multerFilter,
+    storage: multerStorageS3,
+    fileFilter: filter,
 });
 
 module.exports = upload;
