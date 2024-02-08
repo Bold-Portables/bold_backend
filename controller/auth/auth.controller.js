@@ -102,10 +102,10 @@ exports.loginUser = async (req, res) => {
                     expiresIn: "1d",
                 };
                 userData.token = jwt.sign(jwtPayload, secret, jwtData);
-                let { _id, name, email, user_type, mobile } = userData.user;
+                let { _id, name, email, user_type, mobile, profile_picture } = userData.user;
                 let { token } = userData;
                 
-                return apiResponse.successResponseWithData(res, "User Logged in succesfully", { user: { _id, name, email, user_type, mobile }, token })
+                return apiResponse.successResponseWithData(res, "User Logged in succesfully", { user: { _id, name, email, user_type, mobile, profile_picture }, token })
             });
         })
         (req, res);
@@ -222,7 +222,7 @@ exports.updateProfileImage = async (req, res) => {
         }
 
         // update user's profile picture
-        user.profile_picture = req.file.path;
+        user.profile_picture = req.file.key;
         const updateUser = await user.save();
         if (updateUser) {
             logger.log("info", { fileName: path.basename(__filename), message: 'File uploaded Successfully' });
