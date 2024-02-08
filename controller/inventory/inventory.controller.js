@@ -599,12 +599,56 @@ exports.findByQutationTypeAndId = async (req, res) => {
 
         const skip = (page - 1) * limit;
 
-        const inventories = await Inventory.find({ 
-            quote_id: quotationId,
-            quote_type: quotationType
-        })
-        .skip(skip)
-        .limit(limit);
+        const inventories = await Inventory.aggregate([
+            { 
+                $match: {
+                  quote_id: quotationId,
+                  quote_type: quotationType
+                } 
+            },
+            {
+                $lookup: {
+                    from: 'userservices',
+                    let: { inventoryId: { $toString: '$_id' } },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$qrId', '$$inventoryId'] } } },
+                    ],
+                    as: 'serviceRequests'
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    coordinator: 1,
+                    productName: 1,
+                    description: 1,
+                    category: 1,
+                    gender: 1,
+                    quantity: 1,
+                    qrId: 1,
+                    qrCodeValue: 1,
+                    type: 1,
+                    qrCode: 1,
+                    quote_id: 1,
+                    quote_type: 1,
+                    created_value: 1,
+                    initial_value: 1,
+                    status: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    serviceRequestCount: {
+                        $cond: {
+                            if: { $isArray: "$serviceRequests" },
+                            then: { $size: "$serviceRequests" },
+                            else: 0
+                        }
+                    },
+                }
+            },
+            { $sort: { updatedAt: -1 } },
+            { $skip: skip },
+            { $limit: limit }
+        ])
 
         const totalItems = await Inventory.countDocuments({ 
             quote_id: quotationId,
