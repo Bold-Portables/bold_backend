@@ -30,7 +30,7 @@ exports.saveNewGeneratedQrCOde = async (req, res) => {
             // const uniqueId = await generateStrings();
             const paddedQrId = qrId.toString().padStart(4, '0');
 
-            const scanningValue = `${productName}-${paddedQrId}-${type}-${category}-${gender}`;
+            const scanningValue = paddedQrId;
             const formattedValue = `${process.env.APP_URL}/services/${scanningValue.replace(/\s/g, '')}`;
             // Create a new inventory instance
             const inventory = new Inventory({
@@ -72,23 +72,12 @@ exports.editGeneratedQrCOde = async (req, res) => {
             return apiResponse.notFoundResponse(res, 'Inventory not found');
         }
 
-        // Generate a new unique identifier
-        const uniqueId = updatedInventory.qrId;
-
-        const scanningValue = `${productName}-${uniqueId}-${type}-${category}-${gender}`;
-        const formattedValue = scanningValue.replace(/\s/g, '');
-
         // Update the inventory properties
         updatedInventory.productName = productName;
         updatedInventory.description = description;
         updatedInventory.type = type;
         updatedInventory.category = category;
         updatedInventory.gender = gender;
-        updatedInventory.qrCodeValue = formattedValue;
-
-        // Generate the QR code image
-        const qrCodeImage = await generateQRCode(scanningValue, uniqueId);
-        updatedInventory.qrCode = qrCodeImage;
 
         // Save the updated inventory
         const savedInventory = await updatedInventory.save();
@@ -383,7 +372,7 @@ exports.revertQrCodeValue = async (req, res) => {
         const { quoteId, quoteType } = req.body;
 
         // Find the inventories with the provided quoteId and quoteType in the qrCodeValue
-        const inventories = await Inventory.find({ qrCodeValue: { $regex: `${quoteType}-${quoteId}$` } });
+        const inventories = await Inventory.find({ quote_id: quoteId, quote_type: quoteType });
 
         if (!inventories || inventories.length === 0) {
             return apiResponse.notFoundResponse(res, 'Inventories not found with the provided quoteId and quoteType');
@@ -394,13 +383,13 @@ exports.revertQrCodeValue = async (req, res) => {
             const inventory = inventories[i];
 
             // Remove the provided quoteId and quoteType from the qrCodeValue
-            const updatedQrCodeValue = inventory.qrCodeValue.replace(`-${quoteType}-${quoteId}`, '');
+            // const updatedQrCodeValue = inventory.qrCodeValue.replace(`-${quoteType}-${quoteId}`, '');
 
             // Generate and assign the updated QR code
             // inventory.qrCode = await generateQRCode(updatedQrCodeValue);
 
             // Update the qrCodeValue field with the updated QR code value
-            inventory.qrCodeValue = updatedQrCodeValue;
+            // inventory.qrCodeValue = updatedQrCodeValue;
 
             // Set the status of the inventory to "completed"
             inventory.status = 'completed';
@@ -547,13 +536,13 @@ exports.autoAssignQrCodeToQuote = async (req, res) => {
                 inventory.status = 'active';
 
                 // Append the quoteType and quoteId to the existing qrCodeValue
-                const updatedQrCodeValue = `${inventory.qrCodeValue}-${quotationType}-${quotationId}`;
+                // const updatedQrCodeValue = `${inventory.qrCodeValue}-${quotationType}-${quotationId}`;
 
                 // Generate and assign the updated QR code
                 // inventory.qrCode = await generateQRCode(updatedQrCodeValue);
 
                 // Update the qrCodeValue field with the updated QR code value
-                inventory.qrCodeValue = updatedQrCodeValue;
+                // inventory.qrCodeValue = updatedQrCodeValue;
 
                 // Save the updated inventory
                 await inventory.save();
