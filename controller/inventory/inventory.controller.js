@@ -450,6 +450,8 @@ exports.getFilterDetails = async (req, res) => {
         }
         filter.status = 'pending'; // Add this line to filter by 'status' property with 'pending' value
 
+        filter.qrId = { $ne: '0001' } // Filters QR code 0001 because it is the promo code
+
         // Convert page and limit parameters to integers (with default values)
         const pageNo = parseInt(page) || 1;
         const pageSize = parseInt(limit) || 10; // Default to 10 items per page
@@ -459,8 +461,12 @@ exports.getFilterDetails = async (req, res) => {
 
         // Find the matching inventory items based on the filter and apply pagination
         const filteredInventory = await Inventory.find(filter).skip(skipItems).limit(pageSize).sort({ updatedAt: -1 });
+        const totalCount = await Inventory.countDocuments(filter);
 
-        return apiResponse.successResponseWithData(res, 'Filtered inventory items retrieved successfully', filteredInventory);
+        return apiResponse.successResponseWithData(res, 'Filtered inventory items retrieved successfully', 
+        { 'filteredInventory': filteredInventory, 
+          'totalCount': totalCount });
+
     } catch (error) {
         console.log(error.message);
         return apiResponse.ErrorResponse(res, error.message);

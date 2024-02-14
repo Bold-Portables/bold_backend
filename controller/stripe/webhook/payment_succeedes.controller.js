@@ -115,7 +115,7 @@ exports.paymentSucceeded = async (object) => {
         
         mailer.sendMail(mailOptions);
 
-        const text = "You subscription is succesfull";
+        const text = "You subscription is successful";
 
         sendSms.sendSMS(user.mobile, text);
 
