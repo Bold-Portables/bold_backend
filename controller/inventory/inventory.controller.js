@@ -19,7 +19,22 @@ exports.saveNewGeneratedQrCOde = async (req, res) => {
 
         const savedInventories = [];
 
-        const lastInventory = await Inventory.findOne().sort({ createdAt: -1 }).limit(1);
+        // fetches the inventory with the larges parsed qrId value
+        let lastInventory = await Inventory.aggregate([
+            {
+              $addFields: {
+                parsedId: { $toInt: "$qrId" }
+              }
+            },
+            {
+              $sort: { parsedId: -1 }
+            },
+            {
+              $limit: 1
+            }
+          ])
+
+          lastInventory = lastInventory[0] 
 
         let lastQrId = lastInventory && lastInventory.qrId && !isNaN(lastInventory.qrId) ? lastInventory.qrId : 0;
 
