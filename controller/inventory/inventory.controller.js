@@ -337,7 +337,7 @@ exports.getQrCodesByStatus = async ({ query }, res) => {
                     coordinator: { $arrayElemAt: ["$populatedUser.name", 0] }
                 }
             },
-            { $sort: { updatedAt: -1 } },
+            { $sort: { qrId: -1 } },
             { $skip: skip },
             { $limit: limitNumber }
         ])
@@ -475,7 +475,7 @@ exports.getFilterDetails = async (req, res) => {
         const skipItems = (pageNo - 1) * pageSize;
 
         // Find the matching inventory items based on the filter and apply pagination
-        const filteredInventory = await Inventory.find(filter).skip(skipItems).limit(pageSize).sort({ updatedAt: -1 });
+        const filteredInventory = await Inventory.find(filter).skip(skipItems).limit(pageSize).sort({ qrId: -1 });
         const totalCount = await Inventory.countDocuments(filter);
 
         return apiResponse.successResponseWithData(res, 'Filtered inventory items retrieved successfully', 
@@ -655,7 +655,7 @@ exports.findByQutationTypeAndId = async (req, res) => {
                     },
                 }
             },
-            { $sort: { updatedAt: -1 } },
+            { $sort: { qrId: -1 } },
             { $skip: skip },
             { $limit: limit }
         ])
