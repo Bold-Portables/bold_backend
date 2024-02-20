@@ -280,12 +280,32 @@ exports.assignQrCodeToQuote = async (req, res) => {
 
 exports.getQrCodesByStatus = async ({ query }, res) => {
     try {
-        let { status, page, limit } = query;
+        let { status, page, limit, order } = query;
         const pageNumber = parseInt(page, 10) || 1;
         const limitNumber = parseInt(limit, 10) || 10;
         const skip = (pageNumber - 1) * limitNumber;
 
         const findQuery = status ? { status } : {};
+
+        let sort
+
+        switch (order) {
+            case "id-desc":
+              sort = { qrId: -1 }
+              break;
+            case "id-asc":
+                sort = { qrId: 1 }
+              break;
+            case "new":
+                sort = { createdAt: -1 }
+              break;
+            case "old":
+                sort = { createdAt: 1 }
+              break;
+            default:
+                sort = { qrId: -1 }
+              break;
+          }    
 
         const qrCodes = await Inventory.aggregate([
             { $match: findQuery },
@@ -337,7 +357,7 @@ exports.getQrCodesByStatus = async ({ query }, res) => {
                     coordinator: { $arrayElemAt: ["$populatedUser.name", 0] }
                 }
             },
-            { $sort: { qrId: -1 } },
+            { $sort: sort },
             { $skip: skip },
             { $limit: limitNumber }
         ])
