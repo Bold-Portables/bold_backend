@@ -41,7 +41,6 @@ exports.getDetails = async (req, res) => {
                 break;
             case 'personal-or-business':
                 quotation = await PersonalOrBusiness.findOne({_id:quotationId});
-                console.log('djkdjkd', quotation)
                 break;
             case 'disaster-relief':
                 quotation = await DisasterRelief.findOne({_id:quotationId});
@@ -60,6 +59,100 @@ exports.getDetails = async (req, res) => {
         return apiResponse.successResponseWithData(res, "Subscription detail fetched successfully", {
             subscription, quotation, tracking
         });
+    } catch (error) {
+        return apiResponse.ErrorResponse(res, error.message);
+    }
+};
+
+// Updates the quotes cost data and the monthly subscription cost on stripe and db
+exports.updateSubscription= async (req, res) => {
+    try {
+
+        const { subscriptionId } = req.params;
+        const { costDetails, updatedCost} = req.body;
+
+        // Find the existing construction document
+        const farmOrchardWinery = await FarmOrchardWinery.findById(farmOrchardWineryId);
+
+        if (!farmOrchardWinery) {
+            return apiResponse.ErrorResponse(res, "Farm, Orchard or Winery Quotation not found.");
+        }
+
+        if (subscriptionId && updatedCost) {
+            const subscription = await Subscription.findById(subscriptionId);
+
+            // Update the subscription on the DB
+            subscription.monthlyCost = updatedCost;
+            subscription.save();
+
+            //Update the monthly subscription on stripe
+        }
+
+        // Update the costDetails field
+        farmOrchardWinery.costDetails = costDetails;
+
+        const user = await User.findById(farmOrchardWinery.user);
+
+        // Save the updated disasterRelief document
+        await farmOrchardWinery.save();
+        if (type !== 'save') {
+            const notification = new Notification({
+                user: farmOrchardWinery.user,
+                quote_type: 'recreational-site',
+                quote_id: farmOrchardWinery._id,
+                type: 'UPDATE_QUOTE',
+                status_seen: false,
+            });
+            await notification.save();
+            io.emit('update_quote', { farmOrchardWinery });
+
+
+
+            // Generate the PDF content
+            const pdfDoc = new PDFDocument();
+
+            // Create a buffer to store the PDF data
+            let pdfBuffer = Buffer.alloc(0);
+            pdfDoc.on('data', (chunk) => {
+                pdfBuffer = Buffer.concat([pdfBuffer, chunk]);
+            });
+            pdfDoc.on('end', async () => {
+                // Send the email with the PDF attachment
+                const emailModel = await AdminEmail.findOne({ slug: "quotation-update-action-required" });
+
+                if (emailModel) {
+                    const mailOptions = {
+                        from: process.env.MAIL_FROM,
+                        to: user.email,
+                        subject: emailModel.header,
+                        text: emailModel.body,
+                        attachments: [
+                            {
+                                filename: `quotation_update-${farmOrchardWineryId}.pdf`,
+                                content: pdfBuffer,
+                            },
+                        ],
+                    };
+                    // mailer.sendMail(mailOptions);
+                }
+            });
+
+            // Add quotation details to the PDF
+            addQuotationDetails(pdfDoc, farmOrchardWinery);
+
+            // End the document
+            pdfDoc.end();
+        }
+
+        const text = `Quotation cost details updated. Id: ${farmOrchardWinery._id}`;
+
+        // sendSms.sendSMS(user.mobile, text);
+
+        return apiResponse.successResponseWithData(
+            res,
+            "Quotation has been updated successfully",
+            farmOrchardWinery
+        );
     } catch (error) {
         return apiResponse.ErrorResponse(res, error.message);
     }

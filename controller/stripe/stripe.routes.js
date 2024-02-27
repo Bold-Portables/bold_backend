@@ -62,4 +62,11 @@ router.post(
     subscriptionController.chargeServiceFee
 );
 
+router.put(
+    "/admin/subscription/:subscriptionId",
+    checkAuth,
+    hasRole("ADMIN"),
+    subscriptionController.updateSubscription
+);
+
 module.exports = router;
