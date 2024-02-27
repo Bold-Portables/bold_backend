@@ -65,7 +65,8 @@ exports.getDetails = async (req, res) => {
     }
 };
 
-exports.updateSubscription = async (req, res) => {
+// Adds a one-time payment for a specific subscription for the incoming invoice
+exports.chargeServiceFee = async (req, res) => {
     try {
         const { subscriptionId } = req.params;
         const { upgradeAmount, description } = req.body;

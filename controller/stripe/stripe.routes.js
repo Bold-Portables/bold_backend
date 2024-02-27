@@ -56,10 +56,10 @@ router.get(
 );
 
 router.post(
-    "/admin/subscription/:subscriptionId",
+    "/admin/subscription-fee/:subscriptionId",
     checkAuth,
     hasRole("ADMIN"),
-    subscriptionController.updateSubscription
+    subscriptionController.chargeServiceFee
 );
 
 module.exports = router;
