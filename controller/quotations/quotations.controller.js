@@ -1302,13 +1302,23 @@ exports.createFarmOrchardWineryQuotation = async (req, res) => {
 exports.updateFarmOrchardWineryQuotation = async (req, res) => {
     try {
         const { farmOrchardWineryId } = req.params; // Get the construction ID from the request parameters
-        const { costDetails, type = "" } = req.body;
+        const { costDetails, subscriptionId, updatedCost, type = ""} = req.body;
 
         // Find the existing construction document
         const farmOrchardWinery = await FarmOrchardWinery.findById(farmOrchardWineryId);
 
         if (!farmOrchardWinery) {
             return apiResponse.ErrorResponse(res, "Farm, Orchard or Winery Quotation not found.");
+        }
+
+        if (subscriptionId && updatedCost) {
+            const subscription = await Subscription.findById(subscriptionId);
+
+            // Update the subscription on the DB
+            subscription.monthlyCost = updatedCost;
+            subscription.save();
+
+            //Update the monthly subscription on stripe
         }
 
         // Update the costDetails field
