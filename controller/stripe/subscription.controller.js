@@ -30,34 +30,7 @@ exports.getDetails = async (req, res) => {
 
         const tracking = await Tracking.find({ subscriptionId: subscriptionId });
 
-        const quotationId = subscription.quotationId;
-
-        const quotationType = subscription.quotationType;
-
-        let quotation;
-        switch (quotationType) {
-            case 'event':
-                quotation = await Event.findOne({_id:quotationId});
-                break;
-            case 'farm-orchard-winery':
-                quotation = await FarmOrchardWinery.findOne({_id:quotationId});
-                break;
-            case 'personal-or-business':
-                quotation = await PersonalOrBusiness.findOne({_id:quotationId});
-                break;
-            case 'disaster-relief':
-                quotation = await DisasterRelief.findOne({_id:quotationId});
-                
-                break;
-            case 'construction':
-                quotation = await Construction.findOne({_id:quotationId});
-                break;
-            case 'recreational-site':
-                quotation = await RecreationalSite.findOne({_id:quotationId});
-                break;
-            default:
-                throw new Error(`Quotation type '${quotationType}' not found`);
-        }
+        const quotation = await getQuotation(subscription.quotationId, subscription.quotationType)
 
         return apiResponse.successResponseWithData(res, "Subscription detail fetched successfully", {
             subscription, quotation, tracking
@@ -71,34 +44,68 @@ exports.getDetails = async (req, res) => {
 exports.updateSubscription= async (req, res) => {
     try {
         const { subscriptionId } = req.params;
-        
-        const { costDetails, 
-                updatedCost, 
-                quotationId, 
-                quotationType} = req.body;
+        const { costDetails, updatedCost } = req.body;
 
-        
-        // see about maybe populating the user on subscription?
-        const subscription = await Subscription.findById(subscriptionId);
-        const user = await User.findById(subscription.user);
-        const quotation = await getQuotation(quotationId, quotationType);
+        const subscription = await Subscription.findById(subscriptionId)
+        .populate({ path: "user", model: "User" });
+
+        const quotation = await getQuotation(subscription.quotationId, subscription.quotationType);
 
         if (!subscription) {
             return apiResponse.ErrorResponse(res, "Subscription not found.");
         }
 
+        // update subscription monthly costs on db
+        subscription.upgradedCost = (subscription.upgradedCost - subscription.monthlyCost) + updatedCost
         subscription.monthlyCost = updatedCost;
-        subscription.save();
-    
-        //Update the monthly subscription on stripe
-        
+        await subscription.save();
+
+        // update quotes cost details on db
         quotation.costDetails = costDetails;
         await quotation.save();
 
+        // Retrieve the subscription
+        const stripeSubscription = await stripe.subscriptions.retrieve(subscription.subscription);
+        const oldPrice = stripeSubscription.plan.id
+
+        // create new monthly price
+        const newPrice = await stripe.prices.create({
+            currency: 'cad',
+            unit_amount: updatedCost * 100,
+            recurring: {
+              interval: 'month',
+            },
+            product: 'prod_PeASzswl9hwPSg' // test product, store real product in env var
+          });
+
+        // update subscription with new price
+        await stripe.subscriptions.update(
+            subscription.subscription,
+            {
+              items: [
+                { 
+                  id: stripeSubscription.items.data[0].id,
+                  price: newPrice.id,
+                },
+              ],
+            proration_behavior: 'none',
+            }
+        );
+
+        // archive the old price
+        if (stripeSubscription.plan.active) {
+            await stripe.prices.update(
+                oldPrice,
+                {
+                  active: false
+                }
+            )
+        }
+
         const notification = new Notification({
-            user: user,
-            quote_type: quotationType,
-            quote_id: quotationId,
+            user: subscription.user,
+            quote_type: subscription.quotationType,
+            quote_id: subscription.quotationId,
             type: 'UPDATE_QUOTE',
             status_seen: false,
         });
@@ -153,7 +160,7 @@ exports.chargeServiceFee = async (req, res) => {
     }
 };
  
-getQuotation = async (quotationId, quotationType) => {
+const getQuotation = async (quotationId, quotationType) => {
     let quotation;
 
     switch (quotationType) {
