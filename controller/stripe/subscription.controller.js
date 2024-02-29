@@ -68,14 +68,22 @@ exports.updateSubscription= async (req, res) => {
         const stripeSubscription = await stripe.subscriptions.retrieve(subscription.subscription);
         const oldPrice = stripeSubscription.plan.id
 
+        const encodedQuotationId = encodeURIComponent(subscription.quotationId);
+        const encodedQuotationType = encodeURIComponent(subscription.quotationType);
+
         // create new monthly price
         const newPrice = await stripe.prices.create({
+            
             currency: 'cad',
             unit_amount: updatedCost * 100,
             recurring: {
               interval: 'month',
             },
-            product: 'prod_PeASzswl9hwPSg' // test product, store real product in env var
+            product: 'prod_PeASzswl9hwPSg', // test product, store real product in env var
+            metadata: {
+                quotationId: encodedQuotationId,
+                quotationType: encodedQuotationType,
+               }
           });
 
         // update subscription with new price
