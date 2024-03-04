@@ -3,6 +3,9 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const apiResponse = require("../../helpers/apiResponse");
 const User = require("../../models/user/user.schema");
 const Subscription = require("./models/subscription.schema");
+const Notification = require("../../models/notification/notification.schema")
+const { server } = require('../../server');
+const io = require('socket.io')(server);
 const Payment = require("./models/payment_succeeded.schema");
 const { Status } = require("../../constants/status.constant");
 const { PaymentMode } = require("../../constants/payment_mode.constant");
@@ -27,35 +30,7 @@ exports.getDetails = async (req, res) => {
 
         const tracking = await Tracking.find({ subscriptionId: subscriptionId });
 
-        const quotationId = subscription.quotationId;
-
-        const quotationType = subscription.quotationType;
-
-        let quotation;
-        switch (quotationType) {
-            case 'event':
-                quotation = await Event.findOne({_id:quotationId});
-                break;
-            case 'farm-orchard-winery':
-                quotation = await FarmOrchardWinery.findOne({_id:quotationId});
-                break;
-            case 'personal-or-business':
-                quotation = await PersonalOrBusiness.findOne({_id:quotationId});
-                console.log('djkdjkd', quotation)
-                break;
-            case 'disaster-relief':
-                quotation = await DisasterRelief.findOne({_id:quotationId});
-                
-                break;
-            case 'construction':
-                quotation = await Construction.findOne({_id:quotationId});
-                break;
-            case 'recreational-site':
-                quotation = await RecreationalSite.findOne({_id:quotationId});
-                break;
-            default:
-                throw new Error(`Quotation type '${quotationType}' not found`);
-        }
+        const quotation = await getQuotation(subscription.quotationId, subscription.quotationType)
 
         return apiResponse.successResponseWithData(res, "Subscription detail fetched successfully", {
             subscription, quotation, tracking
@@ -65,7 +40,108 @@ exports.getDetails = async (req, res) => {
     }
 };
 
-exports.updateSubscription = async (req, res) => {
+// Updates the quotes cost data and the monthly subscription cost on stripe and db
+exports.updateSubscription= async (req, res) => {
+    try {
+        const { subscriptionId } = req.params;
+        const { costDetails, updatedCost, updatedQuotation, vipSection } = req.body;
+
+        const subscription = await Subscription.findById(subscriptionId)
+        .populate({ path: "user", model: "User" });
+
+        const quotation = await getQuotation(subscription.quotationId, subscription.quotationType);
+
+        if (!subscription) {
+            return apiResponse.ErrorResponse(res, "Subscription not found.");
+        }
+
+        // update subscription monthly costs on db
+        subscription.upgradedCost = (subscription.upgradedCost - subscription.monthlyCost) + updatedCost
+        subscription.monthlyCost = updatedCost;
+        await subscription.save();
+
+        // update quotes cost details on db
+        quotation.costDetails = costDetails;
+
+        // update the quote data
+        for (let key in updatedQuotation) {
+            quotation[key] = updatedQuotation[key]
+        }
+
+        // if event quote, update vip section
+        if (subscription.quotationType === 'event' && vipSection) {
+            quotation.vipSection = vipSection;
+        }
+        await quotation.save();
+
+        // Retrieve the subscription
+        const stripeSubscription = await stripe.subscriptions.retrieve(subscription.subscription);
+        const oldPrice = stripeSubscription.plan.id
+
+        const encodedQuotationId = encodeURIComponent(subscription.quotationId);
+        const encodedQuotationType = encodeURIComponent(subscription.quotationType);
+
+        // create new monthly price
+        const newPrice = await stripe.prices.create({
+            
+            currency: 'cad',
+            unit_amount: updatedCost * 100,
+            recurring: {
+              interval: 'month',
+            },
+            product: process.env.STRIPE_PRODUCT_SUBSCRIPTION,
+            metadata: {
+                quotationId: encodedQuotationId,
+                quotationType: encodedQuotationType,
+               }
+          });
+
+        // update subscription with new price
+        await stripe.subscriptions.update(
+            subscription.subscription,
+            {
+              items: [
+                { 
+                  id: stripeSubscription.items.data[0].id,
+                  price: newPrice.id,
+                },
+              ],
+            proration_behavior: 'none',
+            }
+        );
+
+        // archive the old price
+        if (stripeSubscription.plan.active) {
+            await stripe.prices.update(
+                oldPrice,
+                {
+                  active: false
+                }
+            )
+        }
+
+        const notification = new Notification({
+            user: subscription.user,
+            quote_type: subscription.quotationType,
+            quote_id: subscription.quotationId,
+            type: 'UPDATE_QUOTE',
+            status_seen: false,
+        });
+        await notification.save();
+        io.emit('update_quote', { quotation });
+
+        return apiResponse.successResponseWithData(
+            res,
+            "Quotation has been updated successfully",
+            quotation
+        );
+    } catch (error) {
+        return apiResponse.ErrorResponse(res, error.message);
+    }
+};
+
+// Adds a one-time payment for a specific subscription for the incoming invoice
+exports.chargeServiceFee = async (req, res) => {
     try {
         const { subscriptionId } = req.params;
         const { upgradeAmount, description } = req.body;
@@ -102,3 +178,31 @@ exports.updateSubscription = async (req, res) => {
     }
 };
  
+const getQuotation = async (quotationId, quotationType) => {
+    let quotation;
+
+    switch (quotationType) {
+        case 'event':
+            quotation = await Event.findOne({_id:quotationId});
+            break;
+        case 'farm-orchard-winery':
+            quotation = await FarmOrchardWinery.findOne({_id:quotationId});
+            break;
+        case 'personal-or-business':
+            quotation = await PersonalOrBusiness.findOne({_id:quotationId});
+            break;
+        case 'disaster-relief':
+            quotation = await DisasterRelief.findOne({_id:quotationId});
+            
+            break;
+        case 'construction':
+            quotation = await Construction.findOne({_id:quotationId});
+            break;
+        case 'recreational-site':
+            quotation = await RecreationalSite.findOne({_id:quotationId});
+            break;
+        default:
+            throw new Error(`Quotation type '${quotationType}' not found`);
+    }
+    return quotation
+}
