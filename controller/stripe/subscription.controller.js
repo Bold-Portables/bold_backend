@@ -89,7 +89,7 @@ exports.updateSubscription= async (req, res) => {
             recurring: {
               interval: 'month',
             },
-            product: 'prod_PeASzswl9hwPSg', // test product, store real product in env var
+            product: process.env.STRIPE_PRODUCT_SUBSCRIPTION,
             metadata: {
                 quotationId: encodedQuotationId,
                 quotationType: encodedQuotationType,
