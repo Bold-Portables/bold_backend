@@ -73,6 +73,16 @@ exports.updateProfileImage = async (req, res) => {
     }
 };
 
+exports.createUser = async (req, res) => {
+    try {
+        const { name, email, phone, address} = req.body.userData
+
+        return apiResponse.successResponseWithData(res, "User successfully created");
+    } catch (error) {
+        return apiResponse.ErrorResponse(res, error.message);
+    }
+};
+
 exports.sendMailToMultipleUser = async (req, res) => {
     try {
         const { emailList, subject, message } = req.body;
@@ -135,7 +145,6 @@ exports.findUsersByQuery = async (req, res) => {
         return apiResponse.ErrorResponse(res, error.message);
     }
 };
-
 
 // Function to find users based on name, email, or mobile
 const findUsersByNameEmailOrMobile = async (query) => {
