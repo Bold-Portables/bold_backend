@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const mailer = require("../../helpers/nodemailer");
+const userHelper = require('../../helpers/user');
 
 exports.updateProfile = async (req, res) => {
     try {
@@ -73,6 +74,28 @@ exports.updateProfileImage = async (req, res) => {
     }
 };
 
+exports.createUser = async (req, res) => {
+    try {
+        const { email, cellNumber } = req.body.userData;
+
+        const existingUser = await User.findOne({ $or: [{ email: email }, { mobile: cellNumber }] });
+
+        if (existingUser) {
+            throw new Error("User with email or phone number already exists");
+        }
+
+        let { error, user, message } = await userHelper.createUser(req.body.userData);
+
+        if (error) {
+            return apiResponse.ErrorResponse(res, message);
+        }
+
+        return apiResponse.successResponseWithData(res, "User successfully created", user);
+    } catch (error) {
+        return apiResponse.ErrorResponse(res, error.message);
+    }
+};
+
 exports.sendMailToMultipleUser = async (req, res) => {
     try {
         const { emailList, subject, message } = req.body;
@@ -135,7 +158,6 @@ exports.findUsersByQuery = async (req, res) => {
         return apiResponse.ErrorResponse(res, error.message);
     }
 };
-
 
 // Function to find users based on name, email, or mobile
 const findUsersByNameEmailOrMobile = async (query) => {
