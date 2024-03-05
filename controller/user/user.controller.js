@@ -75,7 +75,18 @@ exports.updateProfileImage = async (req, res) => {
 
 exports.createUser = async (req, res) => {
     try {
-        const { name, email, phone, address} = req.body.userData
+        const { email, phone } = req.body.userData;
+
+        // Check if a user with the provided email or phone already exists
+        const existingUser = await User.findOne({ $or: [{ email: email }, { mobile: phone }] });
+
+        if (existingUser) {
+            // User with the provided email or phone already exists
+            throw new Error("User with email or phone number already exists");
+        }
+
+        // If user does not exist, create a new user with the user helper
+        // const newUser = await User.create({ name, email, phone, address });
 
         return apiResponse.successResponseWithData(res, "User successfully created");
     } catch (error) {
