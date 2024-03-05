@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const mailer = require("../../helpers/nodemailer");
+const userHelper = require('../../helpers/user');
 
 exports.updateProfile = async (req, res) => {
     try {
@@ -75,18 +76,19 @@ exports.updateProfileImage = async (req, res) => {
 
 exports.createUser = async (req, res) => {
     try {
-        const { email, phone } = req.body.userData;
+        const { email, cellNumber } = req.body.userData;
 
-        // Check if a user with the provided email or phone already exists
-        const existingUser = await User.findOne({ $or: [{ email: email }, { mobile: phone }] });
+        const existingUser = await User.findOne({ $or: [{ email: email }, { mobile: cellNumber }] });
 
         if (existingUser) {
-            // User with the provided email or phone already exists
             throw new Error("User with email or phone number already exists");
         }
 
-        // If user does not exist, create a new user with the user helper
-        // const newUser = await User.create({ name, email, phone, address });
+        let { error, user, message } = await userHelper.createUser(req.body.userData);
+
+        if (error) {
+            return apiResponse.ErrorResponse(res, message);
+        }
 
         return apiResponse.successResponseWithData(res, "User successfully created");
     } catch (error) {
