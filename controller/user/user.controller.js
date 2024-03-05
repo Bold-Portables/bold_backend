@@ -90,7 +90,7 @@ exports.createUser = async (req, res) => {
             return apiResponse.ErrorResponse(res, message);
         }
 
-        return apiResponse.successResponseWithData(res, "User successfully created");
+        return apiResponse.successResponseWithData(res, "User successfully created", user);
     } catch (error) {
         return apiResponse.ErrorResponse(res, error.message);
     }
