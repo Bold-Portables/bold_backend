@@ -16,9 +16,9 @@ function generateRandomPassword(length) {
 }
 
   
-exports.createUser = async (userData) => {
+exports.createUser = async (userData, isAdmin = false) => {
     try {
-        const { name, email, cellNumber } = userData;
+        const { name, email, mobile } = userData;
         const tempPassword = generateRandomPassword(8);
         // Hash the temporary password
         const hashedPassword = await bcrypt.hash(tempPassword, 10);
@@ -61,15 +61,18 @@ exports.createUser = async (userData) => {
                 `
             };
               
-            mailer.sendMail(mailOptionsForExistingUser);
+            if (!isAdmin) {
+              mailer.sendMail(mailOptionsForExistingUser);
+            }
+            
             return { error: false, message: "User exist", user: existingUser };
         }
 
         const newUser = new User({
             name,
             email,
+            mobile,
             password: hashedPassword,
-            mobile: cellNumber,
             user_type: 'USER'
         });
 

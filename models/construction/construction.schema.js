@@ -13,8 +13,8 @@ const constructionSchema = new mongoose.Schema(
             email: String, // Email of the main contact for the event
             cellNumber: String // Cell number of the main contact for the event
         },
-        maxWorkers: Number, // Largest number of workers utilizing the unit
-        weeklyHours: Number, // Number of hours per week workers are on site
+        maxWorkers: { type: Number, default: 0 }, // Largest number of workers utilizing the unit
+        weeklyHours: { type: Number, default: 0 }, // Number of hours per week workers are on site
         placementDate: Date, // Date and time the unit will be placed
         restrictedAccess: Boolean, // Whether there is restricted access to the site
         restrictedAccessDescription: String,
@@ -26,8 +26,8 @@ const constructionSchema = new mongoose.Schema(
             type: { type: String, default: 'Point' }, // Default value of 'Point' for GeoJSON point location
             coordinates: { type: [Number], default: [0, 0] } // Default value of [0, 0] for coordinates
         },
-        distanceFromKelowna: Number, // Distance from the center of Kelowna in kilometers
-        serviceCharge: Number, // Service charge per km beyond a certain distance
+        distanceFromKelowna: { type: Number, default: 0 }, // Distance from the center of Kelowna in kilometers
+        serviceCharge: { type: Number, default: 0 }, // Service charge per km beyond a certain distance
         deliveredPrice: { type: Number, default: 0 }, // Price for delivering the unit, default value of 0
         useAtNight: Boolean, // Whether the unit will be used at night
         useInWinter: Boolean, // Whether the unit will be used in the winter

@@ -41,30 +41,7 @@ const monthlyCostSum = (costDetails) => {
 
 exports.createConstructionQuotation = async (req, res) => {
     try {
-
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-        // // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await Construction.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
@@ -73,7 +50,7 @@ exports.createConstructionQuotation = async (req, res) => {
         const _id = user._id.toString();
 
         const {
-            coordinator: { name },
+            coordinator: { name, email, mobile },
             maxWorkers,
             weeklyHours,
             placementDate,
@@ -96,7 +73,15 @@ exports.createConstructionQuotation = async (req, res) => {
             handSanitizerPump,
             twiceWeeklyService,
             dateTillUse,
+            costDetails
         } = req.body;
+
+        const updatedCellNumber = '+1' + mobile;
+
+          // Check if the year is more than 4 digits
+        if (placementDate > dateTillUse) {1
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
 
         if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
@@ -106,7 +91,6 @@ exports.createConstructionQuotation = async (req, res) => {
         if (placementDate.length > 10 || dateTillUse.length > 10) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
         }
-
 
         const totalWorkers = parseInt(femaleWorkers) + parseInt(maleWorkers);
 
@@ -166,6 +150,14 @@ exports.createConstructionQuotation = async (req, res) => {
 
         // Create a new Construction instance with the quotation object as properties
         const construction = new Construction(quotation);
+
+        if (costDetails) {
+            construction.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(construction, req.body.coordinator)
+        }
 
         // Save the construction instance
         await construction.save();
@@ -515,6 +507,7 @@ const addQuotationDetails = (pdfDoc, quotationData) => {
         ['Special Requirements Cost:', `$${quotationData.costDetails.specialRequirementsCost}`],
         ['Service Frequency Cost:', `$${quotationData.costDetails.serviceFrequencyCost}`],
         ['Weekly Hours Cost:', `$${quotationData.costDetails.weeklyHoursCost}`],
+        ['Twice Weekly Servicing:', `$${quotationData.costDetails.twiceWeeklyServicing}`],
     ];
 
     if (quotationData.quotationType == "event") {
@@ -556,27 +549,26 @@ const addQuotationDetails = (pdfDoc, quotationData) => {
     yOffset += (otherDetailsData.length + 1) * tableOptions.rowHeight;
 
     // Calculate the total cost
-    const totalCost = quotationData.costDetails.useAtNightCost + quotationData.costDetails.useInWinterCost + quotationData.costDetails.numberOfUnitsCost + quotationData.costDetails.deliveryPrice + quotationData.costDetails.workersCost + quotationData.costDetails.handWashingCost + quotationData.costDetails.handSanitizerPumpCost + quotationData.costDetails.specialRequirementsCost + quotationData.costDetails.serviceFrequencyCost + quotationData.costDetails.weeklyHoursCost + quotationData.serviceCharge + quotationData.deliveredPrice;
-    const initialInvoice = totalCost + quotationData.costDetails.pickUpPrice
+    const initialInvoice = Object.values(quotationData.costDetails).reduce((acc, current) => {
+        if (current) acc += current;
+
+        return acc;
+    }, 0)
+
+    const monthlyInvoice = initialInvoice - quotationData.costDetails.pickUpPrice;
 
     pdfDoc.moveDown();
     pdfDoc.moveDown();
 
     const totalsData = [
         ['Delivery Price:', `$${quotationData.costDetails.pickUpPrice}`],
-        ['Monthly Invoice:', `$${totalCost}`],
+        ['Monthly Invoice:', `$${monthlyInvoice}`],
         ['Initial Invoice:', `$${initialInvoice}`],
     ];
     // Draw the Total rows
     for (let i = 0; i < totalsData.length; i++) {
         drawTableRow(totalsData[i], i, yOffset);
     }
-
-    // Add more content to the PDF as needed
-
-
-
-
 };
 
 exports.updateRecreationalSiteQuotation = async (req, res) => {
@@ -2140,3 +2132,40 @@ exports.cancelQuotation = async (req, res) => {
         return apiResponse.ErrorResponse(res, error.message);
     }
 };
+
+const updateByAdmin = (quotation, user) => {
+    // Generate the PDF content
+    const pdfDoc = new PDFDocument();
+
+    // Create a buffer to store the PDF data
+    let pdfBuffer = Buffer.alloc(0);
+    pdfDoc.on('data', (chunk) => {
+        pdfBuffer = Buffer.concat([pdfBuffer, chunk]);
+    });
+    pdfDoc.on('end', async () => {
+        // Send the email with the PDF attachment
+        const emailModel = await AdminEmail.findOne({ slug: "quotation-update-action-required" });
+
+        if (emailModel) {
+            const mailOptions = {
+                from: process.env.MAIL_FROM,
+                to: user.email,
+                subject: emailModel.header,
+                text: emailModel.body,
+                attachments: [
+                    {
+                        filename: `quotation_update-${quotation._id}.pdf`,
+                        content: pdfBuffer,
+                    },
+                ],
+            };
+            mailer.sendMail(mailOptions);
+        }
+    });
+
+    // Add quotation details to the PDF
+    addQuotationDetails(pdfDoc, quotation);
+
+    // End the document
+    pdfDoc.end();
+}
