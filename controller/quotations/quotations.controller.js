@@ -888,29 +888,6 @@ exports.updateDisasterReliefQuotation = async (req, res) => {
 
 exports.createPersonalOrBusinessQuotation = async (req, res) => {
     try {
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-
-        // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await PersonalOrBusiness.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-
         let { error, user, message } = await userHelper.createUser(req.body.coordinator);
 
         if (error) {
@@ -918,9 +895,9 @@ exports.createPersonalOrBusinessQuotation = async (req, res) => {
         }
 
         const _id = user._id.toString();
+
         const {
-            useType,
-            coordinator: { name },
+            coordinator: { name, email, mobile },
             maxWorkers,
             weeklyHours,
             placementDate,
@@ -941,8 +918,17 @@ exports.createPersonalOrBusinessQuotation = async (req, res) => {
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
-            restrictedAccessDescription
+            restrictedAccessDescription,
+            useType,
+            costDetails,
         } = req.body;
+
+        const updatedCellNumber = '+1' + mobile;
+
+        // Check if the year is more than 4 digits
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
 
         if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
@@ -973,10 +959,8 @@ exports.createPersonalOrBusinessQuotation = async (req, res) => {
             deliveredPrice = (distanceFromKelowna - 10) * serviceCharge;
         }
 
-        // Construct the PersonalOrBusiness object
-        const personalOrBusiness = new PersonalOrBusiness({
+        const quotation = {
             user: _id,
-            useType,
             coordinator: {
                 name,
                 email,
@@ -1000,14 +984,25 @@ exports.createPersonalOrBusinessQuotation = async (req, res) => {
             productTypes,
             femaleWorkers,
             maleWorkers,
-            totalWorkers: parseInt(maleWorkers) + parseInt(femaleWorkers),
+            totalWorkers,
             handwashing,
             handSanitizerPump,
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
-            restrictedAccessDescription
-        });
+            restrictedAccessDescription,
+            useType,
+        }
+
+        const personalOrBusiness = new PersonalOrBusiness(quotation);
+
+        if (costDetails) {
+            personalOrBusiness.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(personalOrBusiness, req.body.coordinator)
+        }
 
         // Save the PersonalOrBusiness instance
         await personalOrBusiness.save();
