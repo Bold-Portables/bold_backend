@@ -1123,40 +1123,16 @@ exports.updatePersonalOrBusinessQuotation = async (req, res) => {
 
 exports.createFarmOrchardWineryQuotation = async (req, res) => {
     try {
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-
-        // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await FarmOrchardWinery.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
         }
 
         const _id = user._id.toString();
+
         const {
-            useType,
-            coordinator: { name },
+            coordinator: { name, email , mobile },
             maxWorkers,
             weeklyHours,
             placementDate,
@@ -1177,14 +1153,21 @@ exports.createFarmOrchardWineryQuotation = async (req, res) => {
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
-            restrictedAccessDescription
+            restrictedAccessDescription,
+            useType,
+            costDetails
         } = req.body;
+        
+        const updatedCellNumber = '+1' + mobile;
+
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
 
         if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
         }
 
-        // Check if the year is more than 4 digits
         if (placementDate.length > 10 || dateTillUse.length > 10) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
         }
@@ -1208,8 +1191,7 @@ exports.createFarmOrchardWineryQuotation = async (req, res) => {
             deliveredPrice = (distanceFromKelowna - 10) * serviceCharge;
         }
 
-        // Construct the FarmOrchardWinery object
-        const farmOrchardWinery = new FarmOrchardWinery({
+        const quotation = {
             user: _id,
             useType,
             coordinator: {
@@ -1235,14 +1217,25 @@ exports.createFarmOrchardWineryQuotation = async (req, res) => {
             productTypes,
             femaleWorkers,
             maleWorkers,
-            totalWorkers: parseInt(maleWorkers) + parseInt(femaleWorkers),
+            totalWorkers,
             handwashing,
             handSanitizerPump,
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
             restrictedAccessDescription
-        });
+        }
+
+        // Construct the FarmOrchardWinery object
+        const farmOrchardWinery = new FarmOrchardWinery(quotation);
+
+        if (costDetails) {
+            farmOrchardWinery.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(farmOrchardWinery, req.body.coordinator)
+        }
 
         // Save the FarmOrchardWinery instance
         await farmOrchardWinery.save();
