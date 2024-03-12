@@ -79,7 +79,7 @@ exports.createConstructionQuotation = async (req, res) => {
         const updatedCellNumber = '+1' + mobile;
 
           // Check if the year is more than 4 digits
-        if (placementDate > dateTillUse) {1
+        if (placementDate > dateTillUse) {
             return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
         }
 
@@ -649,29 +649,7 @@ exports.updateRecreationalSiteQuotation = async (req, res) => {
 
 exports.createDisasterReliefQuotation = async (req, res) => {
     try {
-
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-        // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await DisasterRelief.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
@@ -680,8 +658,7 @@ exports.createDisasterReliefQuotation = async (req, res) => {
         const _id = user._id.toString();
 
         const {
-            disasterNature,
-            coordinator: { name },
+            coordinator: { name, email , mobile },
             maxWorkers,
             weeklyHours,
             placementDate,
@@ -703,8 +680,26 @@ exports.createDisasterReliefQuotation = async (req, res) => {
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
-            restrictedAccessDescription
+            restrictedAccessDescription,
+            disasterNature,
+            costDetails
         } = req.body;
+
+        const updatedCellNumber = '+1' + mobile;
+
+          // Check if the year is more than 4 digits
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
+
+        if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
+            return apiResponse.ErrorResponse(res, 'Invalid date format');
+        }
+
+        // Check if the year is more than 4 digits
+        if (placementDate.length > 10 || dateTillUse.length > 10) {
+            return apiResponse.ErrorResponse(res, 'Invalid date format');
+        }
 
         const totalWorkers = parseInt(femaleWorkers) + parseInt(maleWorkers);
 
@@ -763,17 +758,16 @@ exports.createDisasterReliefQuotation = async (req, res) => {
             restrictedAccessDescription
         };
 
-        if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
-            return apiResponse.ErrorResponse(res, 'Invalid date format');
-        }
-
-        // Check if the year is more than 4 digits
-        if (placementDate.length > 10 || dateTillUse.length > 10) {
-            return apiResponse.ErrorResponse(res, 'Invalid date format');
-        }
-
         // Create a new DisasterRelief instance with the quotation object as properties
         const disasterRelief = new DisasterRelief(quotation);
+
+        if (costDetails) {
+            disasterRelief.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(disasterRelief, req.body.coordinator)
+        }
 
         // Save the disaster relief instance
         await disasterRelief.save();
