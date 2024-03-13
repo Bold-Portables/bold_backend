@@ -1350,36 +1350,14 @@ exports.updateFarmOrchardWineryQuotation = async (req, res) => {
 
 exports.createEventQuotation = async (req, res) => {
     try {
-
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-        // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await Event.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
         }
 
         const _id = user._id.toString();
+
         const {
             eventDetails: {
                 eventName,
@@ -1388,17 +1366,16 @@ exports.createEventQuotation = async (req, res) => {
                 eventLocation,
                 eventMapLocation
             },
-            coordinator: { name },
+            coordinator: { name, email, mobile },
             maxWorkers,
             weeklyHours,
+            placementDate,
             placementLocation,
             originPoint,
             distanceFromKelowna,
             serviceCharge,
             useAtNight,
             useInWinter,
-            peakUseTimes,
-            peakTimeSlot,
             maxAttendees,
             alcoholServed,
             special_requirements,
@@ -1417,14 +1394,22 @@ exports.createEventQuotation = async (req, res) => {
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
-            restrictedAccessDescription
+            restrictedAccessDescription,
+            costDetails,
         } = req.body;
-        if (!isValidDate(dateTillUse) || !isValidDate(req.body.eventDetails.eventDate)) {
+
+        const updatedCellNumber = '+1' + mobile;
+
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
+
+        if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
         }
 
         // Check if the year is more than 4 digits
-        if (dateTillUse.length > 10) {
+        if (placementDate.length > 10 || dateTillUse.length > 10) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
         }
 
@@ -1448,8 +1433,7 @@ exports.createEventQuotation = async (req, res) => {
             deliveredPrice = (distanceFromKelowna - 10) * serviceCharge;
         }
 
-        // Construct the Event object
-        const event = new Event({
+        const quotation = {
             user: _id,
             coordinator: {
                 name,
@@ -1487,17 +1471,29 @@ exports.createEventQuotation = async (req, res) => {
             productTypes,
             femaleWorkers,
             maleWorkers,
-            totalWorkers: parseInt(maleWorkers) + parseInt(femaleWorkers),
+            totalWorkers,
             handwashing,
             handSanitizerPump,
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
             restrictedAccessDescription
-        });
+        }
+
+        // Construct the Event object
+        const event = new Event(quotation);
+
+        if (costDetails) {
+            event.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(event, req.body.coordinator)
+        }
 
         // Save the Event instance
         await event.save();
+
         const notification = new Notification({
             user: event.user,
             quote_type: "event",
