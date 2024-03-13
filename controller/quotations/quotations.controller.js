@@ -199,29 +199,7 @@ exports.createConstructionQuotation = async (req, res) => {
 
 exports.createRecreationalSiteQuotation = async (req, res) => {
     try {
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-        // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await RecreationalSite.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
@@ -230,7 +208,7 @@ exports.createRecreationalSiteQuotation = async (req, res) => {
         const _id = user._id.toString();
 
         const {
-            coordinator: { name },
+            coordinator: { name, email, mobile },
             maxWorkers,
             weeklyHours,
             placementDate,
@@ -253,7 +231,14 @@ exports.createRecreationalSiteQuotation = async (req, res) => {
             handSanitizerPump,
             twiceWeeklyService,
             dateTillUse,
+            costDetails
         } = req.body;
+
+        const updatedCellNumber = '+1' + mobile;
+
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
 
         if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
@@ -322,6 +307,14 @@ exports.createRecreationalSiteQuotation = async (req, res) => {
 
         // Create a new Construction instance with the quotation object as properties
         const recreationalSite = new RecreationalSite(quotation);
+
+        if (costDetails) {
+            recreationalSite.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(recreationalSite, req.body.coordinator)
+        }
 
         // Save the construction instance
         await recreationalSite.save();
@@ -1123,7 +1116,7 @@ exports.updatePersonalOrBusinessQuotation = async (req, res) => {
 
 exports.createFarmOrchardWineryQuotation = async (req, res) => {
     try {
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator, isAdmin);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
