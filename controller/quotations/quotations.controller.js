@@ -886,7 +886,7 @@ exports.updateDisasterReliefQuotation = async (req, res) => {
 
 exports.createPersonalOrBusinessQuotation = async (req, res) => {
     try {
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
