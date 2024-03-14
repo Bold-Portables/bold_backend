@@ -553,6 +553,11 @@ const addQuotationDetails = (pdfDoc, quotationData) => {
     pdfDoc.moveDown();
     pdfDoc.moveDown();
 
+      if (filteredCostDetailsData.length > 10) {
+        pdfDoc.addPage();
+        yOffset = 50;
+    }
+
     const totalsData = [
         ['Delivery Price:', `$${quotationData.costDetails.pickUpPrice}`],
         ['Monthly Invoice:', `$${monthlyInvoice}`],
