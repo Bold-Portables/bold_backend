@@ -41,30 +41,7 @@ const monthlyCostSum = (costDetails) => {
 
 exports.createConstructionQuotation = async (req, res) => {
     try {
-
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-        // // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await Construction.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
@@ -73,7 +50,7 @@ exports.createConstructionQuotation = async (req, res) => {
         const _id = user._id.toString();
 
         const {
-            coordinator: { name },
+            coordinator: { name, email, mobile },
             maxWorkers,
             weeklyHours,
             placementDate,
@@ -96,7 +73,15 @@ exports.createConstructionQuotation = async (req, res) => {
             handSanitizerPump,
             twiceWeeklyService,
             dateTillUse,
+            costDetails
         } = req.body;
+
+        const updatedCellNumber = '+1' + mobile;
+
+          // Check if the year is more than 4 digits
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
 
         if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
@@ -106,7 +91,6 @@ exports.createConstructionQuotation = async (req, res) => {
         if (placementDate.length > 10 || dateTillUse.length > 10) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
         }
-
 
         const totalWorkers = parseInt(femaleWorkers) + parseInt(maleWorkers);
 
@@ -167,6 +151,14 @@ exports.createConstructionQuotation = async (req, res) => {
         // Create a new Construction instance with the quotation object as properties
         const construction = new Construction(quotation);
 
+        if (costDetails) {
+            construction.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(construction, req.body.coordinator)
+        }
+
         // Save the construction instance
         await construction.save();
 
@@ -207,29 +199,7 @@ exports.createConstructionQuotation = async (req, res) => {
 
 exports.createRecreationalSiteQuotation = async (req, res) => {
     try {
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-        // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await RecreationalSite.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
@@ -238,7 +208,7 @@ exports.createRecreationalSiteQuotation = async (req, res) => {
         const _id = user._id.toString();
 
         const {
-            coordinator: { name },
+            coordinator: { name, email, mobile },
             maxWorkers,
             weeklyHours,
             placementDate,
@@ -261,7 +231,14 @@ exports.createRecreationalSiteQuotation = async (req, res) => {
             handSanitizerPump,
             twiceWeeklyService,
             dateTillUse,
+            costDetails
         } = req.body;
+
+        const updatedCellNumber = '+1' + mobile;
+
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
 
         if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
@@ -330,6 +307,14 @@ exports.createRecreationalSiteQuotation = async (req, res) => {
 
         // Create a new Construction instance with the quotation object as properties
         const recreationalSite = new RecreationalSite(quotation);
+
+        if (costDetails) {
+            recreationalSite.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(recreationalSite, req.body.coordinator)
+        }
 
         // Save the construction instance
         await recreationalSite.save();
@@ -515,6 +500,7 @@ const addQuotationDetails = (pdfDoc, quotationData) => {
         ['Special Requirements Cost:', `$${quotationData.costDetails.specialRequirementsCost}`],
         ['Service Frequency Cost:', `$${quotationData.costDetails.serviceFrequencyCost}`],
         ['Weekly Hours Cost:', `$${quotationData.costDetails.weeklyHoursCost}`],
+        ['Twice Weekly Servicing:', `$${quotationData.costDetails.twiceWeeklyServicing}`],
     ];
 
     if (quotationData.quotationType == "event") {
@@ -556,27 +542,31 @@ const addQuotationDetails = (pdfDoc, quotationData) => {
     yOffset += (otherDetailsData.length + 1) * tableOptions.rowHeight;
 
     // Calculate the total cost
-    const totalCost = quotationData.costDetails.useAtNightCost + quotationData.costDetails.useInWinterCost + quotationData.costDetails.numberOfUnitsCost + quotationData.costDetails.deliveryPrice + quotationData.costDetails.workersCost + quotationData.costDetails.handWashingCost + quotationData.costDetails.handSanitizerPumpCost + quotationData.costDetails.specialRequirementsCost + quotationData.costDetails.serviceFrequencyCost + quotationData.costDetails.weeklyHoursCost + quotationData.serviceCharge + quotationData.deliveredPrice;
-    const initialInvoice = totalCost + quotationData.costDetails.pickUpPrice
+    const initialInvoice = Object.values(quotationData.costDetails).reduce((acc, current) => {
+        if (current) acc += current;
+
+        return acc;
+    }, 0)
+
+    const monthlyInvoice = initialInvoice - quotationData.costDetails.pickUpPrice;
 
     pdfDoc.moveDown();
     pdfDoc.moveDown();
+
+      if (filteredCostDetailsData.length > 10) {
+        pdfDoc.addPage();
+        yOffset = 50;
+    }
 
     const totalsData = [
         ['Delivery Price:', `$${quotationData.costDetails.pickUpPrice}`],
-        ['Monthly Invoice:', `$${totalCost}`],
+        ['Monthly Invoice:', `$${monthlyInvoice}`],
         ['Initial Invoice:', `$${initialInvoice}`],
     ];
     // Draw the Total rows
     for (let i = 0; i < totalsData.length; i++) {
         drawTableRow(totalsData[i], i, yOffset);
     }
-
-    // Add more content to the PDF as needed
-
-
-
-
 };
 
 exports.updateRecreationalSiteQuotation = async (req, res) => {
@@ -657,29 +647,7 @@ exports.updateRecreationalSiteQuotation = async (req, res) => {
 
 exports.createDisasterReliefQuotation = async (req, res) => {
     try {
-
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-        // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await DisasterRelief.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
@@ -688,8 +656,7 @@ exports.createDisasterReliefQuotation = async (req, res) => {
         const _id = user._id.toString();
 
         const {
-            disasterNature,
-            coordinator: { name },
+            coordinator: { name, email , mobile },
             maxWorkers,
             weeklyHours,
             placementDate,
@@ -711,8 +678,26 @@ exports.createDisasterReliefQuotation = async (req, res) => {
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
-            restrictedAccessDescription
+            restrictedAccessDescription,
+            disasterNature,
+            costDetails
         } = req.body;
+
+        const updatedCellNumber = '+1' + mobile;
+
+          // Check if the year is more than 4 digits
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
+
+        if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
+            return apiResponse.ErrorResponse(res, 'Invalid date format');
+        }
+
+        // Check if the year is more than 4 digits
+        if (placementDate.length > 10 || dateTillUse.length > 10) {
+            return apiResponse.ErrorResponse(res, 'Invalid date format');
+        }
 
         const totalWorkers = parseInt(femaleWorkers) + parseInt(maleWorkers);
 
@@ -771,17 +756,16 @@ exports.createDisasterReliefQuotation = async (req, res) => {
             restrictedAccessDescription
         };
 
-        if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
-            return apiResponse.ErrorResponse(res, 'Invalid date format');
-        }
-
-        // Check if the year is more than 4 digits
-        if (placementDate.length > 10 || dateTillUse.length > 10) {
-            return apiResponse.ErrorResponse(res, 'Invalid date format');
-        }
-
         // Create a new DisasterRelief instance with the quotation object as properties
         const disasterRelief = new DisasterRelief(quotation);
+
+        if (costDetails) {
+            disasterRelief.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(disasterRelief, req.body.coordinator)
+        }
 
         // Save the disaster relief instance
         await disasterRelief.save();
@@ -902,39 +886,16 @@ exports.updateDisasterReliefQuotation = async (req, res) => {
 
 exports.createPersonalOrBusinessQuotation = async (req, res) => {
     try {
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-
-        // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await PersonalOrBusiness.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
         }
 
         const _id = user._id.toString();
+
         const {
-            useType,
-            coordinator: { name },
+            coordinator: { name, email, mobile },
             maxWorkers,
             weeklyHours,
             placementDate,
@@ -955,8 +916,17 @@ exports.createPersonalOrBusinessQuotation = async (req, res) => {
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
-            restrictedAccessDescription
+            restrictedAccessDescription,
+            useType,
+            costDetails,
         } = req.body;
+
+        const updatedCellNumber = '+1' + mobile;
+
+        // Check if the year is more than 4 digits
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
 
         if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
@@ -987,10 +957,8 @@ exports.createPersonalOrBusinessQuotation = async (req, res) => {
             deliveredPrice = (distanceFromKelowna - 10) * serviceCharge;
         }
 
-        // Construct the PersonalOrBusiness object
-        const personalOrBusiness = new PersonalOrBusiness({
+        const quotation = {
             user: _id,
-            useType,
             coordinator: {
                 name,
                 email,
@@ -1014,14 +982,25 @@ exports.createPersonalOrBusinessQuotation = async (req, res) => {
             productTypes,
             femaleWorkers,
             maleWorkers,
-            totalWorkers: parseInt(maleWorkers) + parseInt(femaleWorkers),
+            totalWorkers,
             handwashing,
             handSanitizerPump,
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
-            restrictedAccessDescription
-        });
+            restrictedAccessDescription,
+            useType,
+        }
+
+        const personalOrBusiness = new PersonalOrBusiness(quotation);
+
+        if (costDetails) {
+            personalOrBusiness.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(personalOrBusiness, req.body.coordinator)
+        }
 
         // Save the PersonalOrBusiness instance
         await personalOrBusiness.save();
@@ -1142,40 +1121,16 @@ exports.updatePersonalOrBusinessQuotation = async (req, res) => {
 
 exports.createFarmOrchardWineryQuotation = async (req, res) => {
     try {
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-
-        // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await FarmOrchardWinery.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
         }
 
         const _id = user._id.toString();
+
         const {
-            useType,
-            coordinator: { name },
+            coordinator: { name, email , mobile },
             maxWorkers,
             weeklyHours,
             placementDate,
@@ -1196,14 +1151,21 @@ exports.createFarmOrchardWineryQuotation = async (req, res) => {
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
-            restrictedAccessDescription
+            restrictedAccessDescription,
+            useType,
+            costDetails
         } = req.body;
+        
+        const updatedCellNumber = '+1' + mobile;
+
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
 
         if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
         }
 
-        // Check if the year is more than 4 digits
         if (placementDate.length > 10 || dateTillUse.length > 10) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
         }
@@ -1227,8 +1189,7 @@ exports.createFarmOrchardWineryQuotation = async (req, res) => {
             deliveredPrice = (distanceFromKelowna - 10) * serviceCharge;
         }
 
-        // Construct the FarmOrchardWinery object
-        const farmOrchardWinery = new FarmOrchardWinery({
+        const quotation = {
             user: _id,
             useType,
             coordinator: {
@@ -1254,14 +1215,25 @@ exports.createFarmOrchardWineryQuotation = async (req, res) => {
             productTypes,
             femaleWorkers,
             maleWorkers,
-            totalWorkers: parseInt(maleWorkers) + parseInt(femaleWorkers),
+            totalWorkers,
             handwashing,
             handSanitizerPump,
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
             restrictedAccessDescription
-        });
+        }
+
+        // Construct the FarmOrchardWinery object
+        const farmOrchardWinery = new FarmOrchardWinery(quotation);
+
+        if (costDetails) {
+            farmOrchardWinery.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(farmOrchardWinery, req.body.coordinator)
+        }
 
         // Save the FarmOrchardWinery instance
         await farmOrchardWinery.save();
@@ -1383,36 +1355,14 @@ exports.updateFarmOrchardWineryQuotation = async (req, res) => {
 
 exports.createEventQuotation = async (req, res) => {
     try {
-
-        const {
-            coordinator: { email, cellNumber },
-            // Rest of the properties
-        } = req.body;
-
-        const updatedCellNumber = '+1' + cellNumber;
-
-        // Check if a user with the provided email and cellNumber already exists
-        // const existingUser = await Event.findOne({
-        //     $and: [
-        //         { 'coordinator.email': email },
-        //         { 'coordinator.cellNumber': cellNumber }
-        //     ]
-        // });
-
-        // if (existingUser) {
-        //     return apiResponse.ErrorResponse(
-        //         res,
-        //         "User with provided email and cell number already exists"
-        //     );
-        // }
-
-        let { error, user, message } = await userHelper.createUser(req.body.coordinator);
+        let { error, user, message } = await userHelper.createUser(req.body.coordinator, req.body.isAdmin);
 
         if (error) {
             return apiResponse.ErrorResponse(res, message);
         }
 
         const _id = user._id.toString();
+
         const {
             eventDetails: {
                 eventName,
@@ -1421,17 +1371,16 @@ exports.createEventQuotation = async (req, res) => {
                 eventLocation,
                 eventMapLocation
             },
-            coordinator: { name },
+            coordinator: { name, email, mobile },
             maxWorkers,
             weeklyHours,
+            placementDate,
             placementLocation,
             originPoint,
             distanceFromKelowna,
             serviceCharge,
             useAtNight,
             useInWinter,
-            peakUseTimes,
-            peakTimeSlot,
             maxAttendees,
             alcoholServed,
             special_requirements,
@@ -1450,14 +1399,22 @@ exports.createEventQuotation = async (req, res) => {
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
-            restrictedAccessDescription
+            restrictedAccessDescription,
+            costDetails,
         } = req.body;
-        if (!isValidDate(dateTillUse) || !isValidDate(req.body.eventDetails.eventDate)) {
+
+        const updatedCellNumber = '+1' + mobile;
+
+        if (placementDate > dateTillUse) {
+            return apiResponse.ErrorResponse(res, 'Placement date must be before date till use');
+        }
+
+        if (!isValidDate(placementDate) || !isValidDate(dateTillUse)) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
         }
 
         // Check if the year is more than 4 digits
-        if (dateTillUse.length > 10) {
+        if (placementDate.length > 10 || dateTillUse.length > 10) {
             return apiResponse.ErrorResponse(res, 'Invalid date format');
         }
 
@@ -1481,8 +1438,7 @@ exports.createEventQuotation = async (req, res) => {
             deliveredPrice = (distanceFromKelowna - 10) * serviceCharge;
         }
 
-        // Construct the Event object
-        const event = new Event({
+        const quotation = {
             user: _id,
             coordinator: {
                 name,
@@ -1520,17 +1476,29 @@ exports.createEventQuotation = async (req, res) => {
             productTypes,
             femaleWorkers,
             maleWorkers,
-            totalWorkers: parseInt(maleWorkers) + parseInt(femaleWorkers),
+            totalWorkers,
             handwashing,
             handSanitizerPump,
             twiceWeeklyService,
             dateTillUse,
             restrictedAccess,
             restrictedAccessDescription
-        });
+        }
+
+        // Construct the Event object
+        const event = new Event(quotation);
+
+        if (costDetails) {
+            event.costDetails = costDetails
+        }
+
+        if (req.body.isAdmin) {
+            updateByAdmin(event, req.body.coordinator)
+        }
 
         // Save the Event instance
         await event.save();
+
         const notification = new Notification({
             user: event.user,
             quote_type: "event",
@@ -2140,3 +2108,40 @@ exports.cancelQuotation = async (req, res) => {
         return apiResponse.ErrorResponse(res, error.message);
     }
 };
+
+const updateByAdmin = (quotation, user) => {
+    // Generate the PDF content
+    const pdfDoc = new PDFDocument();
+
+    // Create a buffer to store the PDF data
+    let pdfBuffer = Buffer.alloc(0);
+    pdfDoc.on('data', (chunk) => {
+        pdfBuffer = Buffer.concat([pdfBuffer, chunk]);
+    });
+    pdfDoc.on('end', async () => {
+        // Send the email with the PDF attachment
+        const emailModel = await AdminEmail.findOne({ slug: "quotation-update-action-required" });
+
+        if (emailModel) {
+            const mailOptions = {
+                from: process.env.MAIL_FROM,
+                to: user.email,
+                subject: emailModel.header,
+                text: emailModel.body,
+                attachments: [
+                    {
+                        filename: `quotation_update-${quotation._id}.pdf`,
+                        content: pdfBuffer,
+                    },
+                ],
+            };
+            mailer.sendMail(mailOptions);
+        }
+    });
+
+    // Add quotation details to the PDF
+    addQuotationDetails(pdfDoc, quotation);
+
+    // End the document
+    pdfDoc.end();
+}
