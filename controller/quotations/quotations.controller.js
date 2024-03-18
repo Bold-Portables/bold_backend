@@ -1628,6 +1628,8 @@ exports.getAllQuotation = async (req, res) => {
         const { quotationType } = req.params;
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
+        const order = req.query.order || '';
+
 
         if (quotationType == 'all') {
             const quotations = await Promise.all([
@@ -1647,23 +1649,14 @@ exports.getAllQuotation = async (req, res) => {
                     ...recreationalSite.map(recreationalSite => ({ ...recreationalSite.toObject(), type: 'recreational-site' })),
                 ];
             });
-            quotations.sort((a, b) => b.createdAt - a.createdAt);
 
-            // Filtering quotations with pending and cancelled status only
-            const filteredQuotations = quotations.filter(quotation => quotation.status === 'pending' || quotation.status === 'cancelled');
-            // const count = filteredQuotations.length;
+            if(order === 'old') {
+                quotations.sort((a, b) => a.createdAt - b.createdAt);
+            } else {
+                quotations.sort((a, b) => b.createdAt - a.createdAt);
+            }
+
             const count = quotations.length
-            
-            // return apiResponse.successResponseWithData(
-            //     res,
-            //     "Quotations retrieved successfully",
-            //     {
-            //         quotations: filteredQuotations.slice((page - 1) * limit, page * limit),
-            //         page: page,
-            //         pages: Math.ceil(count / limit),
-            //         total: count
-            //     }
-            // );
 
             return apiResponse.successResponseWithData(
                 res,
