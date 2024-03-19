@@ -141,12 +141,25 @@ exports.getListAllUsers = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
+        const input = req.query.input || ''
         const skip = (page - 1) * limit;
 
-        const total = await User.countDocuments({ user_type: { $ne: 'ADMIN' } });
+
+        const total = await User.countDocuments({
+            user_type: { $ne: 'ADMIN' },
+            name: { $regex: input, $options: 'i' },
+            email: { $regex: input, $options: 'i' }
+          });
+
         const totalPages = Math.ceil(total / limit);
 
-        const users = await User.find({ user_type: { $ne: 'ADMIN' } })
+        const users = await User.find({
+            user_type: { $ne: 'ADMIN' },
+            $or: [
+                { name: { $regex: input, $options: 'i' } },
+                { email: { $regex: input, $options: 'i' } }
+              ]
+          })
             .sort({ createdAt: 1 })
             .skip(skip)
             .limit(limit);
