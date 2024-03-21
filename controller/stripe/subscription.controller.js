@@ -44,7 +44,7 @@ exports.getDetails = async (req, res) => {
 exports.updateSubscription= async (req, res) => {
     try {
         const { subscriptionId } = req.params;
-        const { costDetails, updatedCost, updatedQuotation, vipSection } = req.body;
+        const { costDetails, updatedCost, updatedQuotation, vipSection, eventDetails } = req.body;
 
         const subscription = await Subscription.findById(subscriptionId)
         .populate({ path: "user", model: "User" });
@@ -69,8 +69,9 @@ exports.updateSubscription= async (req, res) => {
         }
 
         // if event quote, update vip section
-        if (subscription.quotationType === 'event' && vipSection) {
+        if (subscription.quotationType === 'event' && vipSection && eventDetails) {
             quotation.vipSection = vipSection;
+            quotation.eventDetails = eventDetails;
         }
         await quotation.save();
 
